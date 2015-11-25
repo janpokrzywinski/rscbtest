@@ -92,6 +92,7 @@ print_header "System information"
     uname -a
     echo "Region pulled from XenStore: ${CurrentRegion}"
     echo "Script version: ${Version}"
+    echo "Runlevel :" $(runlevel)
     echo -n "System date and time: "
     date
 
@@ -162,6 +163,7 @@ print_header "Bootstrap contents (${BootstrapFile})"
 
 # Listing processes and checking if backup agent is present
 print_header "Processes running"
+    ps aux | head -1
     ps aux | grep '[d]riveclient\|[c]loudbackup-updater'
     if [ "$(pidof driveclient)" ] 
     then
@@ -202,10 +204,12 @@ print_header "Last 10 Errors in log file (${LogFile})"
     grep -i err ${LogFile} | tail -10
 
 # Show disk space and inodes
-print_header "Disk space left and inodes"
+print_header "Disk space left, inodes and mount-points"
     df -h
     echo
     df -i
+    echo
+    mount
 
 # Display memory information
 print_header "Memory usage information"
