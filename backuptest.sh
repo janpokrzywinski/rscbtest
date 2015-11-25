@@ -46,7 +46,7 @@ else
     EndpointNumber=3
 fi
 
-# Create table to eplace veriable with correct name from API endpoints
+# Create table to replace veriable with correct name from API endpoints
 declare -A Region
     Region[lon]="lon3"
     Region[dfw]="dfw1"
@@ -192,14 +192,14 @@ LockFile=/var/cache/driveclient/backup-running.lock
 
 LogFile=/var/log/driveclient.log
 # Last 10 entries of log file
-print_header "Last 10 entries from the log file (${LogFile})"
-    tail ${LogFile}
+print_header "Last 15 entries from the log file (${LogFile})"
+    tail -15 ${LogFile}
     print_subheader "Number of entries with today's date"
     grep -c $(date +%Y-%m-%d) ${LogFile}
 
 # Checking just for log entries containing "err"
-print_header "Last 5 Errors in log file (${LogFile})"
-    grep -i err ${LogFile} | tail -5
+print_header "Last 10 Errors in log file (${LogFile})"
+    grep -i err ${LogFile} | tail -10
 
 # Show disk space and inodes
 print_header "Disk space left and inodes"
