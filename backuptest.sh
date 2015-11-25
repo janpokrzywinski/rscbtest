@@ -76,10 +76,22 @@ Endpoint=(
     )
 fi
 
+# Functions for printing of headers
 print_header () {
     echo -e "\n${ColourMag}>======== $1:${NoColour}"
 }
 
+print_subheader () {
+    echo -e "\n${ColourBlue}=> $1 :${NoColour}"
+}
+
+
+# Basis system information and execution date
+print_header "System information"
+    uname -a
+    echo "Region pulled from XenStore: ${CurrentRegion}"
+    echo "System date and time:"
+    date
 
 # Resolve all access points for all regions
 #echo -e "\n${ColourMag}>======== Test DNS resolution:${NoColour}"
@@ -90,40 +102,56 @@ do
 done    
 
 # Run single ping request to each of the access points
-echo -e "\n${ColourMag}>======== Test ping:${NoColour}"
+print_header "Test ping response from endpoints"
 for PingNumber in $(seq 0 $EndpointNumber)
-do
-    if ping -q -W3 -c1 ${Endpoint[PingNumber]} &> /dev/null
-    then
-        echo -e "Ping to${ColourBlue} ${Endpoint[PingNumber]} ${NoColour}:${ColourGreen} Success ${NoColour}"
-    else
-        echo -e "Ping to${ColourBlue} ${Endpoint[PingNumber]} ${NoColour}:${ColourRed} Error ${NoColour}"
-    fi
-done
+    do
+        if ping -q -W3 -c1 ${Endpoint[PingNumber]} &> /dev/null
+        then
+            echo -e "Ping to${ColourBlue} ${Endpoint[PingNumber]} ${NoColour}:${ColourGreen} Success ${NoColour}"
+        else
+            echo -e "Ping to${ColourBlue} ${Endpoint[PingNumber]} ${NoColour}:${ColourRed} Error ${NoColour}"
+        fi
+    done
 
 # Showing network interface configuration and routes routes
 print_header "Network settings"
     route -n
+    # this one grabs the gateway used for ServiceNet
+    RouteGW=$(route -n | awk '/10.208.0.0/ {print $2}')
     echo
-    ifconfig eth0 | head -3
+    ifconfig eth0
     echo
-    ifconfig eth1 | head -3
+    ifconfig eth1
     echo -e "\n${ColourBlue}> DNS settings (contents of resolv.conf):${NoColour}"
     cat /etc/resolv.conf
+    for interface in $(xenstore-ls vm-data/networking | awk '{print $1}')
+        do 
+            #echo -e "${ColourBlue}> Xenstore Data for Interface ${interface} :${NoColour}"
+            print_subheader "Xestore data for interface ${Interface}"
+            xenstore-read vm-data/networking/${interface}
+        done
+    if [ -z "$RouteGW" ]
+    then
+        echo -e "\n${ColourRed}!!! WARNING: Missing route for ServiceNet!${NoColour} \nIf this server was created before june 2013 please check this article:"
+        echo "http://www.rackspace.com/knowledge_center/article/updating-servicenet-routes-on-cloud-servers-created-before-june-3-2013"
+        echo -e "\nIt can also mean that ServiceNet network is not attached at all or is attached in non default order to the server."
+    fi
 
 # Check Backup API health status:
 print_header "API Nodes status"
-echo "Status of https://rse.drivesrvr.com/health :"
-curl -s https://rse.drivesrvr.com/health
-echo "Status of https://${CurrentRegion}.backup.api.rackspacecloud.com/v1.0/help/apihealth :"
-curl -s https://${CurrentRegion}.backup.api.rackspacecloud.com/v1.0/help/apihealth
-echo -e "\nStatus of https://${CurrentRegion}.backup.api.rackspacecloud.com/v1.0/help/health :"
-curl -s https://${CurrentRegion}.backup.api.rackspacecloud.com/v1.0/help/health
-echo
+    print_subheader "Status of https://rse.drivesrvr.com/health"
+    curl -s "https://rse.drivesrvr.com/health"
+    print_subheader "Status of https://${CurrentRegion}.backup.api.rackspacecloud.com/v1.0/help/apihealth"
+    curl -s "https://${CurrentRegion}.backup.api.rackspacecloud.com/v1.0/help/apihealth"
+    print_subheader "Status of https://${CurrentRegion}.backup.api.rackspacecloud.com/v1.0/help/health"
+    curl -s "https://${CurrentRegion}.backup.api.rackspacecloud.com/v1.0/help/health"
+    echo
 
 # Show contents from bootstrap.json (config file)
-print_header "Bootstrap contents"
-    cat /etc/driveclient/bootstrap.json
+BootstrapFile=/etc/driveclient/bootstrap.json
+print_header "Bootstrap contents (${BoottrapFile})"
+    cat ${BootstrapFile}
+    echo
 
 # Listing processes and checking if backup agent is present
 print_header "Processes running"
@@ -133,7 +161,7 @@ print_header "Processes running"
         # process running
         echo -e "${ColourGreen}> driveclient process present ${NoColour}"
     else
-        echo -e "${ColourRed}> driveclient service is not running! ${NoColour}\nIf the agent is installed and configured correctly run this:\nservice driveclient start\n"
+        echo -e "${ColourRed}!!! WARNING: driveclient service is not running! ${NoColour}\nIf the agent is installed and configured correctly run this:\nservice driveclient start\n"
     fi
 
 # Location of the binary
@@ -145,10 +173,6 @@ print_header "Location of binaries (whereis)"
 print_header "Driveclient version"
     driveclient --version
 
-# Show kernel information
-print_header "Kernel information (uname)"
-    uname -a
-
 # Show contents of cache directory and check if lock file exists
 print_header "Cache directory contents (/var/cache/driveclient/)"
     ls -hla /var/cache/driveclient/
@@ -156,7 +180,7 @@ print_header "Cache directory contents (/var/cache/driveclient/)"
 LockFile=/var/cache/driveclient/backup-running.lock
     if [ -f ${LockFile} ];
     then
-        echo -e "\n${ColourRed}!!! Lock File present! (${LockFile})\e${NoColour}\nIf backups are stuck in queued state or showing as skipped for last few attempts follow these steps:\n1) Stop backup task in control panel\n2) Stop driveclient service\n3) Delete lock file\n4) Start driveclient service"
+        echo -e "\n${ColourRed}!!! WARNING: Lock File present (${LockFile})\e${NoColour}\nIf backups are stuck in queued state or showing as skipped for last few attempts follow these steps:\n1) Stop backup task in control panel\n2) Stop driveclient service\n3) Delete lock file\n4) Start driveclient service"
     fi
 
 LogFile=/var/log/driveclient.log
