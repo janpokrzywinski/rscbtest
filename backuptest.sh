@@ -1,7 +1,8 @@
 #!/bin/bash
 # Script to automate troubleshooting procedure for Rackspace Cloud Backup agent and Rackspace Cloud Backups
 # Jan Pokrzywinski (Rackspace UK) 2015
-# Version: 1.4.2 (2015-07-01)
+Version=1.5
+vDate=2015-11-25
 
 # Check if script is executed as root, if not break
 if [ $(whoami) != "root" ]
@@ -90,7 +91,8 @@ print_subheader () {
 print_header "System information"
     uname -a
     echo "Region pulled from XenStore: ${CurrentRegion}"
-    echo "System date and time:"
+    echo "Script version: ${Version}"
+    echo -n "System date and time: "
     date
 
 # Resolve all access points for all regions
@@ -149,9 +151,14 @@ print_header "API Nodes status"
 
 # Show contents from bootstrap.json (config file)
 BootstrapFile=/etc/driveclient/bootstrap.json
-print_header "Bootstrap contents (${BoottrapFile})"
-    cat ${BootstrapFile}
-    echo
+print_header "Bootstrap contents (${BootstrapFile})"
+    if [ -e ${BootstrapFile} ]
+    then
+        cat ${BootstrapFile}
+        echo
+    else
+        echo -e "\n${ColourRed}!!! WARNING: Missing agent configuration file (${BootstrapFile})!${NoColour}\nWas the configuration of the backup ran on the server? To run setup after installation execute this:\ndriveclient --configure\n"
+    fi
 
 # Listing processes and checking if backup agent is present
 print_header "Processes running"
@@ -187,6 +194,8 @@ LogFile=/var/log/driveclient.log
 # Last 10 entries of log file
 print_header "Last 10 entries from the log file (${LogFile})"
     tail ${LogFile}
+    print_subheader "Number of entries with today's date"
+    grep -c $(date +%Y-%m-%d) ${LogFile}
 
 # Checking just for log entries containing "err"
 print_header "Last 5 Errors in log file (${LogFile})"
@@ -197,6 +206,10 @@ print_header "Disk space left and inodes"
     df -h
     echo
     df -i
+
+# Display memory information
+print_header "Memory usage information"
+    free
 
 # Clear echo to give clean closing
 echo
