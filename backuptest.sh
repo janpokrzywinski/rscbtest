@@ -1,8 +1,8 @@
 #!/bin/bash
 # Script to automate troubleshooting procedure for Rackspace Cloud Backup agent and Rackspace Cloud Backups
 # Jan Pokrzywinski (Rackspace UK) 2015
-Version=1.5
-vDate=2015-11-25
+Version=1.6
+vDate=2015-12-10
 
 # Check if script is executed as root, if not break
 if [ $(whoami) != "root" ]
@@ -91,6 +91,7 @@ print_subheader () {
 print_header "System information"
     uname -a
     echo "Region pulled from XenStore: ${CurrentRegion}"
+    echo "Instance UUID from XenStore: "$(xenstore-read name)
     echo "Script version: ${Version}"
     echo "Runlevel :" $(runlevel)
     echo -n "System date and time: "
@@ -125,7 +126,9 @@ print_header "Network settings"
     ifconfig eth0
     echo
     ifconfig eth1
-    echo -e "\n${ColourBlue}> DNS settings (contents of resolv.conf):${NoColour}"
+    print_subheader "ARP table"
+    arp
+    print_subheader "DNS settings (contents of resolv.conf)"
     cat /etc/resolv.conf
     for interface in $(xenstore-ls vm-data/networking | awk '{print $1}')
         do 
