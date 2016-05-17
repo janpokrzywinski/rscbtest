@@ -1,8 +1,8 @@
 #!/bin/bash
 # Script to automate troubleshooting procedure for Rackspace Cloud Backup agent and Rackspace Cloud Backups
 # Jan Pokrzywinski (Rackspace UK) 2015
-Version=1.6
-vDate=2015-12-10
+Version=1.7
+vDate=2016-05-17
 
 # Check if script is executed as root, if not break
 if [ $(whoami) != "root" ]
@@ -18,12 +18,14 @@ then
     ColourRed="\e[1;31m"
     ColourBlue="\e[1;34m"
     ColourGreen="\e[1;32m"
+    ColourYellow="\e[1;33m"
     NoColour="\e[0m"
 else
     ColorMag=""
     ColourRed=""
     ColourBlue=""
     ColourGreen=""
+    ColourYellow=""
     NoColour=""
 fi
 
@@ -86,16 +88,14 @@ print_subheader () {
     echo -e "\n${ColourBlue}=> $1 :${NoColour}"
 }
 
-
 # Basis system information and execution date
 print_header "System information"
-    uname -a
-    echo "Region pulled from XenStore: ${CurrentRegion}"
-    echo "Instance UUID from XenStore: "$(xenstore-read name)
-    echo "Script version: ${Version}"
-    echo "Runlevel :" $(runlevel)
-    echo -n "System date and time: "
-    date
+    echo -e "Running kernel:${ColourYellow} $(uname -a) ${NoColour}"
+    echo -e "Region pulled from XenStore:${ColourYellow} ${CurrentRegion} ${NoColour}"
+    echo -e "Instance UUID from XenStore:${ColourYellow} $(xenstore-read name) ${NoColour}"
+    echo -e "Script version:${ColourYellow} ${Version} ${NoColour}"
+    echo -e "Runlevel :${ColourYellow} $(runlevel) ${NoColour}"
+    echo -e "System date and time:${ColourYellow} $(date) ${NoColour}"
 
 # Resolve all access points for all regions
 #echo -e "\n${ColourMag}>======== Test DNS resolution:${NoColour}"
@@ -165,15 +165,21 @@ print_header "Bootstrap contents (${BootstrapFile})"
     fi
 
 # Listing processes and checking if backup agent is present
-print_header "Processes running"
+print_header "Relevant processes"
     ps aux | head -1
-    ps aux | grep '[d]riveclient\|[c]loudbackup-updater'
+    ps aux | grep '[d]riveclient\|[c]loudbackup-updater\|[n]ova-agent\|[x]e-daemon'
     if [ "$(pidof driveclient)" ] 
     then
         # process running
         echo -e "${ColourGreen}> driveclient process present ${NoColour}"
     else
         echo -e "${ColourRed}!!! WARNING: driveclient service is not running! ${NoColour}\nIf the agent is installed and configured correctly run this:\nservice driveclient start\n"
+    fi
+    if [ "$(pidof nova-agent)" ]
+    then
+        NovaRunning=true
+    else
+        echo -e "${ColourRed}!!! WARNING: nova-agent service is not running! ${NoColour}\nPlease check the /var/nova-agent.log for more details and attempt to start it with:\nservice nova-agent start\n"
     fi
 
 # Location of the binary
@@ -212,7 +218,7 @@ print_header "Disk space left, inodes and mount-points"
     echo
     df -i
     echo
-    mount
+    mount | column -t
 
 # Display memory information
 print_header "Memory usage information"
