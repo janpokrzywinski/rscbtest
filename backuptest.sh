@@ -1,8 +1,11 @@
 #!/bin/bash
 # Script to automate troubleshooting procedure for Rackspace Cloud Backup agent and Rackspace Cloud Backups
-# Jan Pokrzywinski (Rackspace UK) 2015
-Version=1.7
-vDate=2016-05-17
+# Jan Pokrzywinski (Rackspace UK) 2015-2016
+# Script lives here:
+# https://github.com/janpokrzywinski/rscbtest
+# https://community.rackspace.com/products/f/25/t/4917
+Version=1.8
+vDate=2016-07-12
 
 # Check if script is executed as root, if not break
 if [ $(whoami) != "root" ]
@@ -63,8 +66,8 @@ then
 Endpoint=(
     "api.drivesrvr.com"
     "rse.drivesrvr.com"
-    "storage101.${Region[$CurrentRegion]}.clouddrive.com"
-    "snet-storage101.${Region[$CurrentRegion]}.clouddrive.com"
+    "storage101.${Region[${CurrentRegion}]}.clouddrive.com"
+    "snet-storage101.${Region[${CurrentRegion}]}.clouddrive.com"
     "rse.drivesrvr.co.uk"
     "api.drivesrvr.co.uk"
     "rse.${CurrentRegion}.drivesrvr.com"
@@ -73,8 +76,8 @@ else
 Endpoint=(
     "api.drivesrvr.com"
     "rse.drivesrvr.com"
-    "storage101.${Region[$CurrentRegion]}.clouddrive.com"
-    "snet-storage101.${Region[$CurrentRegion]}.clouddrive.com"
+    "storage101.${Region[${CurrentRegion}]}.clouddrive.com"
+    "snet-storage101.${Region[${CurrentRegion}]}.clouddrive.com"
     "rse.${CurrentRegion}.drivesrvr.com"
     )
 fi
@@ -90,19 +93,22 @@ print_subheader () {
 
 # Basis system information and execution date
 print_header "System information"
-    echo -e "Running kernel:${ColourYellow} $(uname -a) ${NoColour}"
-    echo -e "Region pulled from XenStore:${ColourYellow} ${CurrentRegion} ${NoColour}"
-    echo -e "Instance UUID from XenStore:${ColourYellow} $(xenstore-read name) ${NoColour}"
-    echo -e "Script version:${ColourYellow} ${Version} ${NoColour}"
-    echo -e "Runlevel :${ColourYellow} $(runlevel) ${NoColour}"
-    echo -e "System date and time:${ColourYellow} $(date) ${NoColour}"
+    echo -e """
+Running kernel:${ColourYellow} $(uname -a) ${NoColour}
+Region pulled from XenStore:${ColourYellow} ${CurrentRegion} ${NoColour}
+Instance UUID from XenStore:${ColourYellow} $(xenstore-read name) ${NoColour}
+Script version:${ColourYellow} ${Version} ${NoColour}
+Runlevel :${ColourYellow} $(runlevel) ${NoColour}
+System date and time:${ColourYellow} $(date) ${NoColour}"""
 
 # Resolve all access points for all regions
 #echo -e "\n${ColourMag}>======== Test DNS resolution:${NoColour}"
 print_header "Test DNS resolution"
 for ResNumber in $(seq 0 ${EndpointNumber})
 do
-    host ${Endpoint[ResNumber]}
+    echo -en "${Endpoint[ResNumber]} : ${ColourYellow}"
+    getent ahosts ${Endpoint[ResNumber]} | awk '/RAW/ {print $1}' | tr '\n' ' '; echo
+    echo -en "${NoColour}"
 done    
 
 # Run single ping request to each of the access points
@@ -122,26 +128,27 @@ print_header "Network settings"
     route -n
     # this one grabs the gateway used for ServiceNet
     RouteGW=$(route -n | awk '/10.208.0.0/ {print $2}')
-    echo
-    ifconfig eth0
-    echo
-    ifconfig eth1
-    print_subheader "ARP table"
-    arp
-    print_subheader "DNS settings (contents of resolv.conf)"
-    cat /etc/resolv.conf
-    for interface in $(xenstore-ls vm-data/networking | awk '{print $1}')
-        do 
-            #echo -e "${ColourBlue}> Xenstore Data for Interface ${interface} :${NoColour}"
-            print_subheader "Xestore data for interface ${Interface}"
-            xenstore-read vm-data/networking/${interface}
-        done
     if [ -z "$RouteGW" ]
     then
         echo -e "\n${ColourRed}!!! WARNING: Missing route for ServiceNet!${NoColour} \nIf this server was created before june 2013 please check this article:"
         echo "http://www.rackspace.com/knowledge_center/article/updating-servicenet-routes-on-cloud-servers-created-before-june-3-2013"
         echo -e "\nIt can also mean that ServiceNet network is not attached at all or is attached in non default order to the server."
     fi
+
+    AddrDirs=$(ls -d /sys/class/net/eth*)
+    for Iface in $(echo "${AddrDirs}" | cut -d "/" -f5)
+    do
+        print_subheader "${Iface} configuration on the system"
+        ifconfig $Iface
+        XSIfaceMAC=$(cat /sys/class/net/${Iface}/address | tr -d ':' | tr '[:lower:]' '[:upper:]')
+        print_subheader "${Iface} configuration in XenStore data"
+        xenstore-read vm-data/networking/${XSIfaceMAC}
+    done
+
+    print_subheader "ARP table"
+    arp
+    print_subheader "DNS settings (contents of resolv.conf)"
+    cat /etc/resolv.conf
 
 # Check Backup API health status:
 print_header "API Nodes status"
@@ -217,7 +224,7 @@ print_header "Disk space left, inodes and mount-points"
     df -h
     echo
     df -i
-    echo
+    print_subheader "Mount points"
     mount | column -t
 
 # Display memory information
