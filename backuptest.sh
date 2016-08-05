@@ -131,7 +131,7 @@ print_header "Network settings"
     if [ -z "$RouteGW" ]
     then
         echo -e "\n${ColourRed}!!! WARNING: Missing route for ServiceNet!${NoColour} \nIf this server was created before june 2013 please check this article:"
-        echo "http://www.rackspace.com/knowledge_center/article/updating-servicenet-routes-on-cloud-servers-created-before-june-3-2013"
+        echo "https://support.rackspace.com/how-to/updating-servicenet-routes-on-cloud-servers-created-before-june-3-2013/"
         echo -e "\nIt can also mean that ServiceNet network is not attached at all or is attached in non default order to the server."
     fi
 
