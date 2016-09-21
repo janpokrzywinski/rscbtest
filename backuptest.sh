@@ -4,8 +4,8 @@
 # Script lives here:
 # https://github.com/janpokrzywinski/rscbtest
 # https://community.rackspace.com/products/f/25/t/4917
-Version=1.8
-vDate=2016-07-12
+Version=1.8.1
+vDate=2016-09-21
 
 # Check if script is executed as root, if not break
 if [ $(whoami) != "root" ]
@@ -107,7 +107,7 @@ print_header "Test DNS resolution"
 for ResNumber in $(seq 0 ${EndpointNumber})
 do
     echo -en "${Endpoint[ResNumber]} : ${ColourYellow}"
-    getent ahosts ${Endpoint[ResNumber]} | awk '/RAW/ {print $1}' | tr '\n' ' '; echo
+    getent ahosts ${Endpoint[ResNumber]} | awk '/RAW/ {print $1}' | sed ':a;N;$!ba;s/\n/     /g'
     echo -en "${NoColour}"
 done    
 
@@ -115,7 +115,7 @@ done
 print_header "Test ping response from endpoints"
 for PingNumber in $(seq 0 $EndpointNumber)
     do
-        if ping -q -W3 -c1 ${Endpoint[PingNumber]} &> /dev/null
+        if ping -q -W4 -c1 ${Endpoint[PingNumber]} &> /dev/null
         then
             echo -e "Ping to${ColourBlue} ${Endpoint[PingNumber]} ${NoColour}:${ColourGreen} Success ${NoColour}"
         else
