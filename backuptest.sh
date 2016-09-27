@@ -1,11 +1,12 @@
 #!/bin/bash
-# Script to automate troubleshooting procedure for Rackspace Cloud Backup agent and Rackspace Cloud Backups
+# Script to automate troubleshooting procedure for linux of
+# Rackspace Cloud Backup agent and Rackspace Cloud Backups
 # Jan Pokrzywinski (Rackspace UK) 2015-2016
 # Script lives here:
 # https://github.com/janpokrzywinski/rscbtest
 # https://community.rackspace.com/products/f/25/t/4917
-Version=1.8.1
-vDate=2016-09-21
+Version=1.8.2
+vDate=2016-09-27
 
 # Check if script is executed as root, if not break
 if [ $(whoami) != "root" ]
@@ -14,7 +15,10 @@ then
     exit 1
 fi
 
-# Check if output is directed to file or to terminali and set variables for colors (Used to strip colors for text output)
+# Check if output is directed to file or to terminali and set variables 
+# for colors (Used to strip colors for text output).
+# This is in place in case if someone downloads this scripts and redirects
+# it to the local output.
 if [ -t 1 ]
 then
     ColourMag="\e[1;36m"
@@ -36,20 +40,32 @@ fi
 CurrentRegion=$(xenstore-read vm-data/provider_data/region 2>&1)
 
 # Set numbers of endpoints to resolve/ping based on CurrentRegion
-if [ ${CurrentRegion} == 'hkg' ] || [ ${CurrentRegion} == 'syd' ] || [ ${CurrentRegion} == 'iad' ]
-then
-    EndpointNumber=4
-elif [ ${CurrentRegion} == 'dfw' ] || [ ${CurrentRegion} == 'ord' ]
-then
-    EndpointNumber=3
-elif [ ${CurrentRegion} == 'lon' ]
-then
-    EndpointNumber=5
-else
-    echo -e "${ColourRed}ERROR : Cannot read the region from XenStore data!${NoColour}\nIs this Rackspace Cloud Server?\nPlease check if xe-daemon is running and check if xe-linux-distribution service is set to start at boot.\n"
-    echo -e "${ColourRed}Test results may be inconsistent due to this!${NoColour}\n"
-    EndpointNumber=3
-fi
+# This is in place as there are different endpoints for specific regions
+# it is to later resolve and ping the endpoints, they will be picked from
+# array in the order they are placed there, thus the number for different
+# regions. To exclude endpoints from the end of the list.
+# Only HKG, SYD and IAD need the rse.${Region}.drivesrvr.com
+case ${CurrentRegion} in
+    hkg|syd|iad)
+        EndpointNumber=4
+        ;;
+    dfw|ord)
+        EndpointNumber=3
+        ;;
+    lon)
+        EndpointNumber=5
+        ;;
+    *)
+        EndpointNumber=3
+        echo -e """
+${ColourRed}ERROR: Cannot read the region from XenStore data!${NoColour}
+Is this Rackspace Cloud Server?
+Please check if xe-daemon is running and check if xe-linux-distribution
+services are set to start at boot
+
+        """
+        ;;
+esac
 
 # Create table to replace veriable with correct name from API endpoints
 declare -A Region
@@ -70,10 +86,10 @@ Endpoint=(
     "snet-storage101.${Region[${CurrentRegion}]}.clouddrive.com"
     "rse.drivesrvr.co.uk"
     "api.drivesrvr.co.uk"
-    "rse.${CurrentRegion}.drivesrvr.com"
     )
 else
 Endpoint=(
+    "identity.api.rackspacecloud.com"
     "api.drivesrvr.com"
     "rse.drivesrvr.com"
     "storage101.${Region[${CurrentRegion}]}.clouddrive.com"
@@ -84,7 +100,7 @@ fi
 
 # Functions for printing of headers
 print_header () {
-    echo -e "\n${ColourMag}>======== $1:${NoColour}"
+    echo -e "\n${ColourMag}###>========> $1:${NoColour}"
 }
 
 print_subheader () {
@@ -94,21 +110,27 @@ print_subheader () {
 # Basis system information and execution date
 print_header "System information"
     echo -e """
-Running kernel:${ColourYellow} $(uname -a) ${NoColour}
-Region pulled from XenStore:${ColourYellow} ${CurrentRegion} ${NoColour}
-Instance UUID from XenStore:${ColourYellow} $(xenstore-read name) ${NoColour}
-Script version:${ColourYellow} ${Version} ${NoColour}
-Runlevel :${ColourYellow} $(runlevel) ${NoColour}
-System date and time:${ColourYellow} $(date) ${NoColour}"""
+Running kernel              :${ColourYellow} $(uname -a) ${NoColour}
+Region pulled from XenStore :${ColourYellow} ${CurrentRegion} ${NoColour}
+Instance UUID from XenStore :${ColourYellow} $(xenstore-read name) ${NoColour}
+Script version              :${ColourYellow} ${Version} ${NoColour}
+Runlevel                    :${ColourYellow} $(runlevel) ${NoColour}
+System date and time        :${ColourYellow} $(date) ${NoColour}"""
 
 # Resolve all access points for all regions
-#echo -e "\n${ColourMag}>======== Test DNS resolution:${NoColour}"
 print_header "Test DNS resolution"
-for ResNumber in $(seq 0 ${EndpointNumber})
+for ResolveNumber in $(seq 0 ${EndpointNumber})
 do
-    echo -en "${Endpoint[ResNumber]} : ${ColourYellow}"
-    getent ahosts ${Endpoint[ResNumber]} | awk '/RAW/ {print $1}' | sed ':a;N;$!ba;s/\n/     /g'
+    echo -en "${Endpoint[ResolveNumber]}"
+    LineNum=$(expr 45 - ${#Endpoint[ResolveNumber]})
+    for i in $(seq 1 ${LineNum})
+        do
+            echo -en " "
+        done
+    echo -en ": ${ColourYellow}"
+    getent ahosts ${Endpoint[ResolveNumber]} | tac | awk '/RAW/ {print $1}' | sed ':a;N;$!ba;s/\n/     /g'
     echo -en "${NoColour}"
+    LineNum=0
 done    
 
 # Run single ping request to each of the access points
@@ -117,10 +139,17 @@ for PingNumber in $(seq 0 $EndpointNumber)
     do
         if ping -q -W4 -c1 ${Endpoint[PingNumber]} &> /dev/null
         then
-            echo -e "Ping to${ColourBlue} ${Endpoint[PingNumber]} ${NoColour}:${ColourGreen} Success ${NoColour}"
+            PingStatus="${ColourGreen}Success${NoColour}"
         else
-            echo -e "Ping to${ColourBlue} ${Endpoint[PingNumber]} ${NoColour}:${ColourRed} Error ${NoColour}"
+            PingStatus="${ColourRed}Error${NoColour}"
         fi
+        echo -en "Ping to${ColourBlue} ${Endpoint[PingNumber]} ${NoColour}"
+        LineNum=$(expr 36 - ${#Endpoint[PingNumber]})
+        for i in $(seq 1 ${LineNum})
+            do
+                echo -en " "
+            done
+        echo -e ": ${PingStatus}"
     done
 
 # Showing network interface configuration and routes routes
@@ -156,9 +185,12 @@ print_header "API Nodes status"
     curl -s "https://rse.drivesrvr.com/health"
     print_subheader "Status of https://${CurrentRegion}.backup.api.rackspacecloud.com/v1.0/help/apihealth"
     curl -s "https://${CurrentRegion}.backup.api.rackspacecloud.com/v1.0/help/apihealth"
-    print_subheader "Status of https://${CurrentRegion}.backup.api.rackspacecloud.com/v1.0/help/health"
-    curl -s "https://${CurrentRegion}.backup.api.rackspacecloud.com/v1.0/help/health"
     echo
+# Commenting out below as it gives error response, need to confirm status of
+# this healthcheck
+#    print_subheader "Status of https://${CurrentRegion}.backup.api.rackspacecloud.com/v1.0/help/health"
+#    curl -s "https://${CurrentRegion}.backup.api.rackspacecloud.com/v1.0/help/health"
+#    echo
 
 # Show contents from bootstrap.json (config file)
 BootstrapFile=/etc/driveclient/bootstrap.json
@@ -174,11 +206,12 @@ print_header "Bootstrap contents (${BootstrapFile})"
 # Listing processes and checking if backup agent is present
 print_header "Relevant processes"
     ps aux | head -1
-    ps aux | grep '[d]riveclient\|[c]loudbackup-updater\|[n]ova-agent\|[x]e-daemon'
+    ps aux | grep --color '[d]riveclient\|[c]loudbackup-updater\|[n]ova-agent\|[x]e-daemon'
+    echo
     if [ "$(pidof driveclient)" ] 
     then
         # process running
-        echo -e "${ColourGreen}> driveclient process present ${NoColour}"
+        echo -e "${ColourGreen}> driveclient process present (Backup Service is running) ${NoColour}"
     else
         echo -e "${ColourRed}!!! WARNING: driveclient service is not running! ${NoColour}\nIf the agent is installed and configured correctly run this:\nservice driveclient start\n"
     fi
