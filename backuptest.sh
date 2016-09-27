@@ -89,7 +89,6 @@ Endpoint=(
     )
 else
 Endpoint=(
-    "identity.api.rackspacecloud.com"
     "api.drivesrvr.com"
     "rse.drivesrvr.com"
     "storage101.${Region[${CurrentRegion}]}.clouddrive.com"
