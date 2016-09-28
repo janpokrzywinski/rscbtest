@@ -107,7 +107,7 @@ else
     InstanceName="UNKNOWN"
 fi
 
-if [[ "${CurrentRegion}" == x* ]] && [[ "InstanceName" == x*]]
+if [ "${CurrentRegion}" == x* ] && [ "${InstanceName}" == x* ]
 then
     echo "Couldn't read from XenStore"
     CurrentRegion="UNKNOWN"
