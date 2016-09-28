@@ -113,13 +113,12 @@ print_warning () {
 
 # Basis system information and execution date
 print_header "System information"
-    echo -e """
-Running kernel              :${ColourYellow} $(uname -a) ${NoColour}
-Region pulled from XenStore :${ColourYellow} ${CurrentRegion} ${NoColour}
-Instance UUID from XenStore :${ColourYellow} $(xenstore-read name) ${NoColour}
-Script version              :${ColourYellow} ${Version} ${NoColour}
-Runlevel                    :${ColourYellow} $(runlevel) ${NoColour}
-System date and time        :${ColourYellow} $(date) ${NoColour}"""
+    echo -e """Running kernel                 :${ColourYellow} $(uname -a) ${NoColour}
+Region pulled from XenStore    :${ColourYellow} ${CurrentRegion} ${NoColour}
+Instance UUID from XenStore    :${ColourYellow} $(xenstore-read name) ${NoColour}
+Script version                 :${ColourYellow} ${Version} (${vDate})${NoColour}
+Runlevel                       :${ColourYellow} $(runlevel) ${NoColour}
+System date and time           :${ColourYellow} $(date) ${NoColour}"""
 
 # Resolve all access points for all regions
 print_header "Test DNS resolution"
@@ -248,10 +247,21 @@ print_header "Location of binaries (whereis)"
 print_header "Driveclient version"
     driveclient --version
 
-# Show contents of cache directory and check if lock file exists
-print_header "Cache directory contents (/var/cache/driveclient/)"
-    ls -hla /var/cache/driveclient/
+# Check if the cache directory exists and if so, check its contents.
+CacheDir=/var/cache/driveclient
+print_header "Cache directory contents (${CacheDir})"
+if [ -d "${CacheDir}" ]
+then
+    ls -hla ${CacheDir}
+else
+    print_warning "Cache Directory not present"
+    echo "Is the agent installed?"
+    echo "Was the agent started for the first time?"
+    echo
+fi
 
+# This was code for old versions of backup agent for bug which should not
+# be causing any issues nowadays. Still good to verify if lock is there.
 LockFile=/var/cache/driveclient/backup-running.lock
     if [ -f ${LockFile} ];
     then
