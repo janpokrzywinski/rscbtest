@@ -204,7 +204,7 @@ echo -e  "${XedaemonColour} ${XedaemonStatus} ${NoColour}"
 # Resolve all access points for all regions
 print_header "Test DNS resolution"
 echo -en "${ColourBlue}"
-echo -e "Domain Name                                  : IPv4             IPv6"
+echo -e "Domain Name                                  : IPv4              IPv6"
 echo -en "${NoColour}"
 for ResolveNumber in $(seq 0 ${EndpointNumber})
 do
@@ -230,7 +230,7 @@ fi
 print_header "Test ping response from endpoints"
 for PingNumber in $(seq 0 $EndpointNumber)
 do
-    if ping -q -W4 -c1 ${Endpoint[PingNumber]} &> /dev/null
+    if ping -q -W6 -c1 ${Endpoint[PingNumber]} &> /dev/null
     then
         PingStatus="${ColourGreen}Success${NoColour}"
     else
