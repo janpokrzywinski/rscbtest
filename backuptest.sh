@@ -98,13 +98,19 @@ fi
 # Setup variable for a specific region in which server is located
 if [ $(command -v xenstore-read) ]
 then
+    CurrentRegionColour=${ColourGreen}
+    InstanceNameColour=${ColourGreen}
     CurrentRegion=$(xenstore-read vm-data/provider_data/region 2>&1)
     InstanceName=$(xenstore-read name)
+    XSToolsPresent=true
 else
     print_warning "Command xenstore-read not present"
     echo "Are xen guest addons installed on this server?"
+    CurrentRegionColour=${ColourRed}
+    InstanceNameColour=${ColourRed}
     CurrentRegion="UNKNOWN"
     InstanceName="UNKNOWN"
+    XSToolsPresent=false
 fi
 
 if [ "${CurrentRegion}" == x* ] && [ "${InstanceName}" == x* ]
@@ -180,9 +186,9 @@ print_header "System information and crucial services check"
     echo -en "Running kernel                               :"
     echo -e  "${ColourYellow} $(uname -a) ${NoColour}"
     echo -en "Region pulled from XenStore                  :"
-    echo -e  "${ColourYellow} ${CurrentRegion} ${NoColour}"
+    echo -e  "${CurrentRegionColour} ${CurrentRegion} ${NoColour}"
     echo -en "Instance UUID from XenStore                  :"
-    echo -e  "${ColourYellow} $(xenstore-read name) ${NoColour}"
+    echo -e  "${InstanceNameColour} ${InstanceName} ${NoColour}"
     echo -en "Script version                               :"
     echo -e  "${ColourYellow} ${Version} (${vDate})${NoColour}"
     echo -en "Runlevel                                     :"
@@ -191,12 +197,15 @@ print_header "System information and crucial services check"
     echo -e  "${ColourYellow} $(date) ${NoColour}"
     echo -en "Status of nova-agent on the server           :"
     echo -e  " ${NovaStatus}"
-    echo -en "Status of xe-daemon (xe-linux-distribution)  :"
+    echo -en "Status of xe-daemon                          :"
     echo -e  "${XedaemonColour} ${XedaemonStatus} ${NoColour}"
 
 
 # Resolve all access points for all regions
 print_header "Test DNS resolution"
+echo -en "${ColourBlue}"
+echo -e "Domain Name                                  : IPv4             IPv6"
+echo -en "${NoColour}"
 for ResolveNumber in $(seq 0 ${EndpointNumber})
 do
     echo -en "${Endpoint[ResolveNumber]}"
