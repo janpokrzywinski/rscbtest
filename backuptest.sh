@@ -6,7 +6,8 @@
 # Script lives here:
 # https://github.com/janpokrzywinski/rscbtest
 # https://community.rackspace.com/products/f/25/t/4917
-Version=1.9
+
+Version=1.9.1
 vDate=2016-09-27
 
 
@@ -55,8 +56,8 @@ print_warning () {
 
 
 # Notification for setup of checks
+echo "Rackspace Cloud Backup troubleshooting script"
 echo "Running checks ..."
-echo
 
 
 # Check for crucial cloud server services
@@ -66,9 +67,14 @@ then
     NovaStatus="${ColourGreen}Running${NoColour}"
 else
     print_warning "nova-agent service is not running"
-    echo "Please check the ${NovaLogFile} for more specific details."
-    print_subheader "Last 5 lines from ${NovaLogFile}"
-    tail -n5 ${NovaLogFile}
+    if [ -e ${NovaLogFile} ]
+    then
+        echo "Please check the ${NovaLogFile} for more specific details."
+        print_subheader "Last 5 lines from ${NovaLogFile}"
+        tail -n5 ${NovaLogFile}
+    else
+        echo "${NovaLogFile} does not exist"
+    fi
     echo
     echo "In order to attempt to start nova-agent service, run:"
     echo "service nova-agent start"
@@ -77,11 +83,13 @@ fi
 
 if [ "$(pgrep xe-daemon)" ]
 then
-    XedaemonStatus="${ColourGreen}Running${NoColour}"
+    XedaemonColour=${ColourGreen}
+    XedaemonStatus="Running"
 else
     print_warning "xe-daemon process not present"
     echo "Is the xe-linux-distribution service set to start at boot?"
-    XedaemonStatus="${ColourRed}Not Running${NoColour}"
+    XedaemonColour=${ColourRed}
+    XedaemonStatus="Not Running"
 fi
 
 
@@ -109,7 +117,7 @@ case ${CurrentRegion} in
         EndpointNumber=3
         print_warning "Cannot read the region from XenStore data"
         echo "Is this Rackspace Cloud Server?"
-        if [ ${XedaemonStatus} = "${ColourRed}Not Running${NoColour}" ]
+        if [[ ${XedaemonStatus} == "Not Running" ]]
         then
             echo "This is caused by lack of communication with Xenstore"
         fi
@@ -129,7 +137,7 @@ declare -A Region
 
 
 # Setting up endpoint hostnames for ping
-if [ ${CurrentRegion} == 'lon' ]
+if [[ ${CurrentRegion} == "lon" ]]
 then
 Endpoint=(
     "api.drivesrvr.com"
@@ -167,7 +175,8 @@ print_header "System information and crucial services check"
     echo -en "Status of nova-agent on the server           :"
     echo -e  " ${NovaStatus}"
     echo -en "Status of xe-daemon (xe-linux-distribution)  :"
-    echo -e  " ${XedaemonStatus}"
+    echo -e  "${XedaemonColour} ${XedaemonStatus} ${NoColour}"
+
 
 # Resolve all access points for all regions
 print_header "Test DNS resolution"
@@ -206,6 +215,8 @@ for PingNumber in $(seq 0 $EndpointNumber)
     done
 
 
+SupportHowToURL="https://support.rackspace.com/how-to/"
+HTSNet="updating-servicenet-routes-on-cloud-servers-created-before-june-3-2013"
 # Showing network interface configuration and routes routes
 print_header "Network settings"
     route -n
@@ -214,9 +225,10 @@ print_header "Network settings"
     if [ -z "$RouteGW" ]
     then
         print_warning "Missing route for ServiceNet"
-        echo "If this server was created before june 2013 please check this article:"
-        echo "https://support.rackspace.com/how-to/updating-servicenet-routes-on-cloud-servers-created-before-june-3-2013/"
-        echo "It can also mean that ServiceNet network is not attached at all or is attached in non default order to the server."
+        echo "If this server was created before June 2013 please check this:"
+        echo "${SupportHowToURL}${HTSNet}"
+        echo "It can also mean that ServiceNet network is not attached at all"
+        echo "Cloud Backup requires ServiceNet in order to function correctly"
     fi
 
     AddrDirs=$(ls -d /sys/class/net/eth*)
@@ -224,7 +236,8 @@ print_header "Network settings"
     do
         print_subheader "${Iface} configuration on the system"
         ifconfig $Iface
-        XSIfaceMAC=$(cat /sys/class/net/${Iface}/address | tr -d ':' | tr '[:lower:]' '[:upper:]')
+        XSIfaceMAC=$(cat /sys/class/net/${Iface}/address | tr -d ':' \
+                    | tr '[:lower:]' '[:upper:]')
         print_subheader "${Iface} configuration in XenStore data"
         xenstore-read vm-data/networking/${XSIfaceMAC}
     done
@@ -258,7 +271,6 @@ BootstrapFile=/etc/driveclient/bootstrap.json
 print_header "Bootstrap contents (${BootstrapFile})"
     if [ -e ${BootstrapFile} ]
     then
-        #cat ${BootstrapFile}
         grep --color -i -E '^|"Username"|"AgentId"' ${BootstrapFile}
         echo
     else
@@ -277,7 +289,8 @@ print_header "Relevant processes"
     if [ "$(pgrep driveclient)" ] 
     then
         # process running
-        echo -e "${ColourGreen}> driveclient process present (Backup Service is running) ${NoColour}"
+        echo -en "${ColourGreen}> driveclient process present "
+        echo -e  "(Backup Service is running) ${NoColour}"
     else
         print_warning "driveclient service is not running"
         echo "If the agent is installed and configured correctly run this:"
@@ -321,11 +334,12 @@ LockFile=/var/cache/driveclient/backup-running.lock
     if [ -f ${LockFile} ];
     then
         print_warning "Lock file present (${LockFile})"
-        echo "If backups are stuck in queued state or showing as skipped for last few attempts follow these steps:"
-        echo "1) Stop backup task in control panel"
-        echo "2) Stop driveclient service"
-        echo "3) Delete lock file"
-        echo "4) Start driveclient service"
+        echo -n "If backups are stuck in queued state or showing as skipped "
+        echo    "(for last few attempts) follow these steps:"
+        echo    "1) Stop backup task in control panel"
+        echo    "2) Stop driveclient service"
+        echo    "3) Delete lock file"
+        echo    "4) Start driveclient service"
     fi
 
 
