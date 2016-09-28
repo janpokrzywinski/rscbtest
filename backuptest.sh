@@ -37,6 +37,19 @@ else
     NoColour=""
 fi
 
+# Functions for printing of headers and warnings
+print_header () {
+    echo -e "\n${ColourMag}###>========> $1:${NoColour}"
+}
+
+print_subheader () {
+    echo -e "\n${ColourBlue}=> $1 :${NoColour}"
+}
+
+print_warning () {
+    echo -e "\n${ColourRed}!!! WARNING: $1 !!!${NoColour}"
+}
+
 # Setup variable for a specific region in which server is located
 CurrentRegion=$(xenstore-read vm-data/provider_data/region 2>&1)
 
@@ -58,13 +71,13 @@ case ${CurrentRegion} in
         ;;
     *)
         EndpointNumber=3
-        echo -e """
-${ColourRed}ERROR: Cannot read the region from XenStore data!${NoColour}
-Is this Rackspace Cloud Server?
-Please check if xe-daemon is running and check if xe-linux-distribution
-services are set to start at boot
-
-        """
+        print_warning "Cannot read the region from XenStore data"
+        echo "Is this Rackspace Cloud Server?"
+        echo "Please check if this service is enabled at boot:"
+        echo "xe-linux-distribution"
+        echo "Check if this process is present:"
+        echo "xe-daemon"
+        echo
         ;;
 esac
 
@@ -97,19 +110,6 @@ Endpoint=(
     "rse.${CurrentRegion}.drivesrvr.com"
     )
 fi
-
-# Functions for printing of headers
-print_header () {
-    echo -e "\n${ColourMag}###>========> $1:${NoColour}"
-}
-
-print_subheader () {
-    echo -e "\n${ColourBlue}=> $1 :${NoColour}"
-}
-
-print_warning () {
-    echo -e "\n${ColourRed}!!! WARNING: $1 !!!${NoColour}"
-}
 
 # Basis system information and execution date
 print_header "System information"
@@ -226,7 +226,6 @@ print_header "Relevant processes"
         print_warning "driveclient service is not running"
         echo "If the agent is installed and configured correctly run this:"
         echo "service driveclient start"
-        echo
     fi
     if [ "$(pidof nova-agent)" ]
     then
@@ -235,7 +234,6 @@ print_header "Relevant processes"
         print_warning "nova-agent service is not running"
         echo "Please check the /var/nova-agent.log for more details and attempt to start it with:"
         echo "service nova-agent start"
-        echo
     fi
 
 # Location of the binary
@@ -257,7 +255,6 @@ else
     print_warning "Cache Directory not present"
     echo "Is the agent installed?"
     echo "Was the agent started for the first time?"
-    echo
 fi
 
 # This was code for old versions of backup agent for bug which should not
