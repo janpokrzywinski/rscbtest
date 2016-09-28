@@ -113,12 +113,18 @@ fi
 
 # Basis system information and execution date
 print_header "System information"
-    echo -e """Running kernel                 :${ColourYellow} $(uname -a) ${NoColour}
-Region pulled from XenStore    :${ColourYellow} ${CurrentRegion} ${NoColour}
-Instance UUID from XenStore    :${ColourYellow} $(xenstore-read name) ${NoColour}
-Script version                 :${ColourYellow} ${Version} (${vDate})${NoColour}
-Runlevel                       :${ColourYellow} $(runlevel) ${NoColour}
-System date and time           :${ColourYellow} $(date) ${NoColour}"""
+    echo -en "Running kernel                               :"
+    echo -e  "${ColourYellow} $(uname -a) ${NoColour}"
+    echo -en "Region pulled from XenStore                  :"
+    echo -e  "${ColourYellow} ${CurrentRegion} ${NoColour}"
+    echo -en "Instance UUID from XenStore                  :"
+    echo -e  "${ColourYellow} $(xenstore-read name) ${NoColour}"
+    echo -en "Script version                               :"
+    echo -e  "${ColourYellow} ${Version} (${vDate})${NoColour}"
+    echo -en "Runlevel                                     :"
+    echo -e  "${ColourYellow} $(runlevel) ${NoColour}"
+    echo -en "System date and time                         :"
+    echo -e  "${ColourYellow} $(date) ${NoColour}"
 
 # Resolve all access points for all regions
 print_header "Test DNS resolution"
@@ -210,7 +216,6 @@ print_header "Bootstrap contents (${BootstrapFile})"
         echo "Was the configuration of the backup ran on the server?"
         echo "To run setup after installation execute this:"
         echo "driveclient --configure"
-        echo
     fi
 
 # Listing processes and checking if backup agent is present
@@ -243,7 +248,13 @@ print_header "Location of binaries (whereis)"
 
 # Check version of driveclient
 print_header "Driveclient version"
-    driveclient --version
+    if [ ! -z "$(command -v driveclient)" ]
+    then
+        driveclient --version
+    else
+        print_warning "driveclient program not present"
+        echo "Is the backup agent installed at all?"
+    fi
 
 # Check if the cache directory exists and if so, check its contents.
 CacheDir=/var/cache/driveclient
