@@ -1,20 +1,22 @@
 #!/bin/bash
 # Filename: backuptest.sh
+#
 # Script to automate troubleshooting procedure for linux of
 # Rackspace Cloud Backup agent and Rackspace Cloud Backups
 # Jan Pokrzywinski (Rackspace UK) 2015-2016
+#
 # Script lives here:
 # https://github.com/janpokrzywinski/rscbtest
 # https://community.rackspace.com/products/f/25/t/4917
 
 Version=1.9.1
-vDate=2016-09-27
+vDate=2016-09-28
 
 
 # Check if script is executed as root, if not break
 if [ $(whoami) != "root" ]
 then
-    echo "ERROR: This script needs to be run as root!"
+    echo "ERROR: This script needs to be run as root or with sudo privileges!"
     exit 1
 fi
 
@@ -72,10 +74,10 @@ else
         echo "Please check the ${NovaLogFile} for more specific details."
         print_subheader "Last 5 lines from ${NovaLogFile}"
         tail -n5 ${NovaLogFile}
+        echo
     else
-        echo "${NovaLogFile} does not exist"
+        echo "Log: ${NovaLogFile} does not exist."
     fi
-    echo
     echo "In order to attempt to start nova-agent service, run:"
     echo "service nova-agent start"
     NovaStatus="${ColourRed}Not Running${NoColour}"
@@ -94,8 +96,23 @@ fi
 
 
 # Setup variable for a specific region in which server is located
-CurrentRegion=$(xenstore-read vm-data/provider_data/region 2>&1)
+if [ $(command -v xenstore-read) ]
+then
+    CurrentRegion=$(xenstore-read vm-data/provider_data/region 2>&1)
+    InstanceName=$(xenstore-read name)
+else
+    print_warning "Command xenstore-read not present"
+    echo "Are xen guest addons installed on this server?"
+    CurrentRegion="UNKNOWN"
+    InstanceName="UNKNOWN"
+fi
 
+if [[ "${CurrentRegion}" == x* ]] && [[ "InstanceName" == x*]]
+then
+    echo "Couldn't read from XenStore"
+    CurrentRegion="UNKNOWN"
+    InstanceName="UNKNOWN"
+fi
 
 # Set numbers of endpoints to resolve/ping based on CurrentRegion
 # This is in place as there are different endpoints for specific regions
