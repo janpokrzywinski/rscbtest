@@ -136,10 +136,9 @@ do
         do
             echo -en " "
         done
-    echo -en ": ${ColourYellow}"
-    getent ahosts ${Endpoint[ResolveNumber]} | tac \
-    | awk '/RAW/ {print $1}' | sed ':a;N;$!ba;s/\n/     /g'
-    echo -en "${NoColour}"
+    Result=$(getent ahosts ${Endpoint[ResolveNumber]} | tac \
+             | awk '/RAW/ {print $1}' | sed ':a;N;$!ba;s/\n/     /g')
+    echo -e ":${ColourYellow} ${Result} ${NoColour}"
     LineNum=0
 done    
 
@@ -306,8 +305,9 @@ fi
 
 # Show disk space and inodes
 print_header "Disk space left, inodes and mount-points"
+    print_subheader "Disk space (human readable)"
     df -h
-    echo
+    print_subheader "Inodes"
     df -i
     print_subheader "Mount points"
     mount | column -t
