@@ -156,7 +156,7 @@ declare -A Region
     Region[iad]="iad3"
     Region[hkg]="hkg1"
     Region[ord]="ord1"
-    Regopm[UNKNOWN]="UNKNOWN"
+    Region[UNKNOWN]="UNKNOWN"
 
 
 # Setting up endpoint hostnames for ping
@@ -219,6 +219,11 @@ do
     echo -e ":${ColourYellow} ${Result} ${NoColour}"
     LineNum=0
 done    
+if [[ "#{CurrentRegion}" = "UNKNOWN" ]]
+then
+    print_warning "Not checking ServiceNet endpoints"
+    echo "This is due not being able to determine region form Xenstore"
+fi
 
 
 # Run single ping request to each of the access points
@@ -233,13 +238,13 @@ do
     fi
     echo -en "Ping to${ColourBlue} ${Endpoint[PingNumber]} ${NoColour}"
     LineNum=$(expr 36 - ${#Endpoint[PingNumber]})
-    for i in $(seq 1 ${LineNum})
-        do
-            echo -en " "
-        done
     echo -e ": ${PingStatus}"
 done
-
+if [[ "#{CurrentRegion}" = "UNKNOWN" ]]
+then
+    print_warning "Not checking ServiceNet endpoints"
+    echo "This is due not being able to determine region form Xenstore"
+fi
 
 SupportHowToURL="https://support.rackspace.com/how-to/"
 HTSNet="updating-servicenet-routes-on-cloud-servers-created-before-june-3-2013"
@@ -326,13 +331,34 @@ else
     print_warning "driveclient service is not running"
     echo "If the agent is installed and configured correctly run this:"
     echo "service driveclient start"
+    echo
+fi
+if [ "$(pgrep -f cloudbackup-updater)" ]
+then
+    echo -en "${ColourGreen}> cloudbackup-updater process present${NoColour}"
+    echo
+else
+    print_warning "cloudbackup-updater process is not running"
+    echo "Was it started for the first time after installation?"
+    echo
 fi
 
 
+
 # Location of the binary
-print_header "Location of binaries (whereis)"
-whereis driveclient
-whereis cloudbackup-updater
+print_header "Location of binaries"
+driveclientLocation=$(command -v driveclient)
+updaterLocation=$(command -v cloudbackup-updater)
+if [[ -z "${driveclientLocation}" ]]
+then
+    driveclientLocation="${ColourRed}File does not exit${NoColour}"
+fi
+if [[ -z "${updaterLocation}" ]]
+then
+    updaterLocation="${ColourRed}File does not exit${NoColour}"
+fi
+echo -e "${ColourBlue}driveclient         ${NoColour}: ${driveclientLocation}"
+echo -e "${ColourBlue}cloudbackup-updater ${NoColour}: ${updaterLocation}"
 
 
 # Check version of driveclient
