@@ -219,7 +219,7 @@ do
     echo -e ":${ColourYellow} ${Result} ${NoColour}"
     LineNum=0
 done    
-if [[ "#{CurrentRegion}" = "UNKNOWN" ]]
+if [[ "${CurrentRegion}" = "UNKNOWN" ]]
 then
     print_warning "Not checking ServiceNet endpoints"
     echo "This is due not being able to determine region form Xenstore"
@@ -240,7 +240,7 @@ do
     LineNum=$(expr 36 - ${#Endpoint[PingNumber]})
     echo -e ": ${PingStatus}"
 done
-if [[ "#{CurrentRegion}" = "UNKNOWN" ]]
+if [[ "${CurrentRegion}" = "UNKNOWN" ]]
 then
     print_warning "Not checking ServiceNet endpoints"
     echo "This is due not being able to determine region form Xenstore"
@@ -274,7 +274,9 @@ do
     then
         xenstore-read vm-data/networking/${XSIfaceMAC}
     else
+        echo -en "${ColourRed}"
         echo "Can't read interface ${Iface} information from XenStore"
+        echo -en "${NoColour}"
     fi
 done
 
