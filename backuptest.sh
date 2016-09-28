@@ -9,12 +9,14 @@
 Version=1.9
 vDate=2016-09-27
 
+
 # Check if script is executed as root, if not break
 if [ $(whoami) != "root" ]
 then
     echo "ERROR: This script needs to be run as root!"
     exit 1
 fi
+
 
 # Check if output is directed to file or to terminali and set variables 
 # for colors (Used to strip colors for text output).
@@ -37,6 +39,7 @@ else
     NoColour=""
 fi
 
+
 # Functions for printing of headers and warnings
 print_header () {
     echo -e "\n${ColourMag}###>========> $1:${NoColour}"
@@ -50,8 +53,41 @@ print_warning () {
     echo -e "\n${ColourRed}!!! WARNING: $1 !!!${NoColour}"
 }
 
+
+# Notification for setup of checks
+echo "Running checks ..."
+echo
+
+
+# Check for crucial cloud server services
+NovaLogFile=/var/log/nova-agent.log
+if [ "$(pgrep nova-agent)" ]
+then
+    NovaStatus="${ColourGreen}Running${NoColour}"
+else
+    print_warning "nova-agent service is not running"
+    echo "Please check the ${NovaLogFile} for more specific details."
+    print_subheader "Last 5 lines from ${NovaLogFile}"
+    tail -n5 ${NovaLogFile}
+    echo
+    echo "In order to attempt to start nova-agent service, run:"
+    echo "service nova-agent start"
+    NovaStatus="${ColourRed}Not Running${NoColour}"
+fi
+
+if [ "$(pgrep xe-daemon)" ]
+then
+    XedaemonStatus="${ColourGreen}Running${NoColour}"
+else
+    print_warning "xe-daemon process not present"
+    echo "Is the xe-linux-distribution service set to start at boot?"
+    XedaemonStatus="${ColourRed}Not Running${NoColour}"
+fi
+
+
 # Setup variable for a specific region in which server is located
 CurrentRegion=$(xenstore-read vm-data/provider_data/region 2>&1)
+
 
 # Set numbers of endpoints to resolve/ping based on CurrentRegion
 # This is in place as there are different endpoints for specific regions
@@ -73,13 +109,14 @@ case ${CurrentRegion} in
         EndpointNumber=3
         print_warning "Cannot read the region from XenStore data"
         echo "Is this Rackspace Cloud Server?"
-        echo "Please check if this service is enabled at boot:"
-        echo "xe-linux-distribution"
-        echo "Check if this process is present:"
-        echo "xe-daemon"
+        if [ ${XedaemonStatus} = "${ColourRed}Not Running${NoColour}" ]
+        then
+            echo "This is caused by lack of communication with Xenstore"
+        fi
         echo
         ;;
 esac
+
 
 # Create table to replace veriable with correct name from API endpoints
 declare -A Region
@@ -89,6 +126,7 @@ declare -A Region
     Region[iad]="iad3"
     Region[hkg]="hkg1"
     Region[ord]="ord1"
+
 
 # Setting up endpoint hostnames for ping
 if [ ${CurrentRegion} == 'lon' ]
@@ -111,8 +149,9 @@ Endpoint=(
     )
 fi
 
+
 # Basis system information and execution date
-print_header "System information"
+print_header "System information and crucial services check"
     echo -en "Running kernel                               :"
     echo -e  "${ColourYellow} $(uname -a) ${NoColour}"
     echo -en "Region pulled from XenStore                  :"
@@ -125,6 +164,10 @@ print_header "System information"
     echo -e  "${ColourYellow} $(runlevel) ${NoColour}"
     echo -en "System date and time                         :"
     echo -e  "${ColourYellow} $(date) ${NoColour}"
+    echo -en "Status of nova-agent on the server           :"
+    echo -e  " ${NovaStatus}"
+    echo -en "Status of xe-daemon (xe-linux-distribution)  :"
+    echo -e  " ${XedaemonStatus}"
 
 # Resolve all access points for all regions
 print_header "Test DNS resolution"
@@ -141,6 +184,7 @@ do
     echo -e ":${ColourYellow} ${Result} ${NoColour}"
     LineNum=0
 done    
+
 
 # Run single ping request to each of the access points
 print_header "Test ping response from endpoints"
@@ -160,6 +204,7 @@ for PingNumber in $(seq 0 $EndpointNumber)
             done
         echo -e ": ${PingStatus}"
     done
+
 
 # Showing network interface configuration and routes routes
 print_header "Network settings"
@@ -189,18 +234,24 @@ print_header "Network settings"
     print_subheader "DNS settings (contents of resolv.conf)"
     cat /etc/resolv.conf
 
+
 # Check Backup API health status:
+H1="https://rse.drivesrvr.com/health"
+H2="https://${CurrentRegion}.backup.api.rackspacecloud.com/v1.0/help/apihealth"
+#H3="https://${CurrentRegion}.backup.api.rackspacecloud.com/v1.0/help/health"
+
 print_header "API Nodes status"
-    print_subheader "Status of https://rse.drivesrvr.com/health"
-    curl -s "https://rse.drivesrvr.com/health"
-    print_subheader "Status of https://${CurrentRegion}.backup.api.rackspacecloud.com/v1.0/help/apihealth"
-    curl -s "https://${CurrentRegion}.backup.api.rackspacecloud.com/v1.0/help/apihealth"
+    print_subheader "Status of ${H1}"
+    curl -s ${H1}
+    print_subheader "Status of ${H2}"
+    curl -s ${H2}
     echo
 # Commenting out below as it gives error response, need to confirm status of
 # this healthcheck
-#    print_subheader "Status of https://${CurrentRegion}.backup.api.rackspacecloud.com/v1.0/help/health"
-#    curl -s "https://${CurrentRegion}.backup.api.rackspacecloud.com/v1.0/help/health"
+#    print_subheader "Status of #{H3}"
+#    curl -s ${H3}
 #    echo
+
 
 # Show contents from bootstrap.json (config file)
 BootstrapFile=/etc/driveclient/bootstrap.json
@@ -208,7 +259,7 @@ print_header "Bootstrap contents (${BootstrapFile})"
     if [ -e ${BootstrapFile} ]
     then
         #cat ${BootstrapFile}
-        grep --color -i -E '^|Username|AgentId' ${BootstrapFile}
+        grep --color -i -E '^|"Username"|"AgentId"' ${BootstrapFile}
         echo
     else
         print_warning "Missing agent configuration file (${BootstrapFile})"
@@ -217,12 +268,13 @@ print_header "Bootstrap contents (${BootstrapFile})"
         echo "driveclient --configure"
     fi
 
+
 # Listing processes and checking if backup agent is present
 print_header "Relevant processes"
     ps aux | head -1
-    ps aux | grep '[d]riveclient\|[c]loudbackup-updater\|[n]ova-agent\|[x]e-daemon'
+    ps aux | grep '[d]riveclient\|[c]loudbackup-updater'
     echo
-    if [ "$(pidof driveclient)" ] 
+    if [ "$(pgrep driveclient)" ] 
     then
         # process running
         echo -e "${ColourGreen}> driveclient process present (Backup Service is running) ${NoColour}"
@@ -231,19 +283,13 @@ print_header "Relevant processes"
         echo "If the agent is installed and configured correctly run this:"
         echo "service driveclient start"
     fi
-    if [ "$(pidof nova-agent)" ]
-    then
-        NovaRunning=true
-    else
-        print_warning "nova-agent service is not running"
-        echo "Please check the /var/nova-agent.log for more details and attempt to start it with:"
-        echo "service nova-agent start"
-    fi
+
 
 # Location of the binary
 print_header "Location of binaries (whereis)"
     whereis driveclient
     whereis cloudbackup-updater
+
 
 # Check version of driveclient
 print_header "Driveclient version"
@@ -254,6 +300,7 @@ print_header "Driveclient version"
         print_warning "driveclient program not present"
         echo "Is the backup agent installed at all?"
     fi
+
 
 # Check if the cache directory exists and if so, check its contents.
 CacheDir=/var/cache/driveclient
@@ -267,6 +314,7 @@ else
     echo "Was the agent started for the first time?"
 fi
 
+
 # This was code for old versions of backup agent for bug which should not
 # be causing any issues nowadays. Still good to verify if lock is there.
 LockFile=/var/cache/driveclient/backup-running.lock
@@ -279,6 +327,7 @@ LockFile=/var/cache/driveclient/backup-running.lock
         echo "3) Delete lock file"
         echo "4) Start driveclient service"
     fi
+
 
 # Set variable for lock file and check if it exists
 LogFile=/var/log/driveclient.log
@@ -303,6 +352,7 @@ else
         echo "Check if disk is not full or in read only state"
 fi
 
+
 # Show disk space and inodes
 print_header "Disk space left, inodes and mount-points"
     print_subheader "Disk space (human readable)"
@@ -312,9 +362,11 @@ print_header "Disk space left, inodes and mount-points"
     print_subheader "Mount points"
     mount | column -t
 
+
 # Display memory nformation
 print_header "Memory usage information"
     free
+
 
 # Clear echo to give clean closing
 echo
