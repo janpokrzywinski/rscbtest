@@ -9,7 +9,7 @@
 # https://github.com/janpokrzywinski/rscbtest
 # https://community.rackspace.com/products/f/25/t/4917
 
-Version=1.9.1
+Version=1.9.2
 vDate=2016-09-28
 
 
@@ -137,14 +137,13 @@ case ${CurrentRegion} in
         EndpointNumber=5
         ;;
     *)
-        EndpointNumber=3
+        EndpointNumber=1
         print_warning "Cannot read the region from XenStore data"
         echo "Is this Rackspace Cloud Server?"
         if [[ ${XedaemonStatus} == "Not Running" ]]
         then
             echo "This is caused by lack of communication with Xenstore"
         fi
-        echo
         ;;
 esac
 
@@ -157,6 +156,7 @@ declare -A Region
     Region[iad]="iad3"
     Region[hkg]="hkg1"
     Region[ord]="ord1"
+    Regopm[UNKNOWN]="UNKNOWN"
 
 
 # Setting up endpoint hostnames for ping
@@ -183,22 +183,22 @@ fi
 
 # Basis system information and execution date
 print_header "System information and crucial services check"
-    echo -en "Running kernel                               :"
-    echo -e  "${ColourYellow} $(uname -a) ${NoColour}"
-    echo -en "Region pulled from XenStore                  :"
-    echo -e  "${CurrentRegionColour} ${CurrentRegion} ${NoColour}"
-    echo -en "Instance UUID from XenStore                  :"
-    echo -e  "${InstanceNameColour} ${InstanceName} ${NoColour}"
-    echo -en "Script version                               :"
-    echo -e  "${ColourYellow} ${Version} (${vDate})${NoColour}"
-    echo -en "Runlevel                                     :"
-    echo -e  "${ColourYellow} $(runlevel) ${NoColour}"
-    echo -en "System date and time                         :"
-    echo -e  "${ColourYellow} $(date) ${NoColour}"
-    echo -en "Status of nova-agent on the server           :"
-    echo -e  " ${NovaStatus}"
-    echo -en "Status of xe-daemon                          :"
-    echo -e  "${XedaemonColour} ${XedaemonStatus} ${NoColour}"
+echo -en "Running kernel                               :"
+echo -e  "${ColourYellow} $(uname -a) ${NoColour}"
+echo -en "Region pulled from XenStore                  :"
+echo -e  "${CurrentRegionColour} ${CurrentRegion} ${NoColour}"
+echo -en "Instance UUID from XenStore                  :"
+echo -e  "${InstanceNameColour} ${InstanceName} ${NoColour}"
+echo -en "Script version                               :"
+echo -e  "${ColourYellow} ${Version} (${vDate})${NoColour}"
+echo -en "Runlevel                                     :"
+echo -e  "${ColourYellow} $(runlevel) ${NoColour}"
+echo -en "System date and time                         :"
+echo -e  "${ColourYellow} $(date) ${NoColour}"
+echo -en "Status of nova-agent on the server           :"
+echo -e  " ${NovaStatus}"
+echo -en "Status of xe-daemon                          :"
+echo -e  "${XedaemonColour} ${XedaemonStatus} ${NoColour}"
 
 
 # Resolve all access points for all regions
@@ -224,54 +224,59 @@ done
 # Run single ping request to each of the access points
 print_header "Test ping response from endpoints"
 for PingNumber in $(seq 0 $EndpointNumber)
-    do
-        if ping -q -W4 -c1 ${Endpoint[PingNumber]} &> /dev/null
-        then
-            PingStatus="${ColourGreen}Success${NoColour}"
-        else
-            PingStatus="${ColourRed}Error${NoColour}"
-        fi
-        echo -en "Ping to${ColourBlue} ${Endpoint[PingNumber]} ${NoColour}"
-        LineNum=$(expr 36 - ${#Endpoint[PingNumber]})
-        for i in $(seq 1 ${LineNum})
-            do
-                echo -en " "
-            done
-        echo -e ": ${PingStatus}"
-    done
+do
+    if ping -q -W4 -c1 ${Endpoint[PingNumber]} &> /dev/null
+    then
+        PingStatus="${ColourGreen}Success${NoColour}"
+    else
+        PingStatus="${ColourRed}Error${NoColour}"
+    fi
+    echo -en "Ping to${ColourBlue} ${Endpoint[PingNumber]} ${NoColour}"
+    LineNum=$(expr 36 - ${#Endpoint[PingNumber]})
+    for i in $(seq 1 ${LineNum})
+        do
+            echo -en " "
+        done
+    echo -e ": ${PingStatus}"
+done
 
 
 SupportHowToURL="https://support.rackspace.com/how-to/"
 HTSNet="updating-servicenet-routes-on-cloud-servers-created-before-june-3-2013"
 # Showing network interface configuration and routes routes
 print_header "Network settings"
-    route -n
-    # this one grabs the gateway used for ServiceNet
-    RouteGW=$(route -n | awk '/10.208.0.0/ {print $2}')
-    if [ -z "$RouteGW" ]
+route -n
+# this one grabs the gateway used for ServiceNet
+RouteGW=$(route -n | awk '/10.208.0.0/ {print $2}')
+if [ -z "$RouteGW" ]
+then
+    print_warning "Missing route for ServiceNet"
+    echo "If this server was created before June 2013 please check this:"
+    echo "${SupportHowToURL}${HTSNet}"
+    echo "It can also mean that ServiceNet network is not attached at all"
+    echo "Cloud Backup requires ServiceNet in order to function correctly"
+fi
+
+AddrDirs=$(ls -d /sys/class/net/eth*)
+for Iface in $(echo "${AddrDirs}" | cut -d "/" -f5)
+do
+    print_subheader "${Iface} configuration on the system"
+    ifconfig $Iface
+    XSIfaceMAC=$(cat /sys/class/net/${Iface}/address | tr -d ':' \
+                | tr '[:lower:]' '[:upper:]')
+    print_subheader "${Iface} configuration in XenStore data"
+    if [ "${XSToolsPresent}" = true ]
     then
-        print_warning "Missing route for ServiceNet"
-        echo "If this server was created before June 2013 please check this:"
-        echo "${SupportHowToURL}${HTSNet}"
-        echo "It can also mean that ServiceNet network is not attached at all"
-        echo "Cloud Backup requires ServiceNet in order to function correctly"
-    fi
-
-    AddrDirs=$(ls -d /sys/class/net/eth*)
-    for Iface in $(echo "${AddrDirs}" | cut -d "/" -f5)
-    do
-        print_subheader "${Iface} configuration on the system"
-        ifconfig $Iface
-        XSIfaceMAC=$(cat /sys/class/net/${Iface}/address | tr -d ':' \
-                    | tr '[:lower:]' '[:upper:]')
-        print_subheader "${Iface} configuration in XenStore data"
         xenstore-read vm-data/networking/${XSIfaceMAC}
-    done
+    else
+        echo "Can't read interface ${Iface} information from XenStore"
+    fi
+done
 
-    print_subheader "ARP table"
-    arp
-    print_subheader "DNS settings (contents of resolv.conf)"
-    cat /etc/resolv.conf
+print_subheader "ARP table"
+arp
+print_subheader "DNS settings (contents of resolv.conf)"
+cat /etc/resolv.conf
 
 
 # Check Backup API health status:
@@ -280,65 +285,65 @@ H2="https://${CurrentRegion}.backup.api.rackspacecloud.com/v1.0/help/apihealth"
 #H3="https://${CurrentRegion}.backup.api.rackspacecloud.com/v1.0/help/health"
 
 print_header "API Nodes status"
-    print_subheader "Status of ${H1}"
-    curl -s ${H1}
-    print_subheader "Status of ${H2}"
-    curl -s ${H2}
-    echo
+print_subheader "Status of ${H1}"
+curl -s ${H1}
+print_subheader "Status of ${H2}"
+curl -s ${H2}
+echo
 # Commenting out below as it gives error response, need to confirm status of
 # this healthcheck
-#    print_subheader "Status of #{H3}"
-#    curl -s ${H3}
-#    echo
+# print_subheader "Status of #{H3}"
+# curl -s ${H3}
+# echo
 
 
 # Show contents from bootstrap.json (config file)
 BootstrapFile=/etc/driveclient/bootstrap.json
 print_header "Bootstrap contents (${BootstrapFile})"
-    if [ -e ${BootstrapFile} ]
-    then
-        grep --color -i -E '^|"Username"|"AgentId"' ${BootstrapFile}
-        echo
-    else
-        print_warning "Missing agent configuration file (${BootstrapFile})"
-        echo "Was the configuration of the backup ran on the server?"
-        echo "To run setup after installation execute this:"
-        echo "driveclient --configure"
-    fi
+if [ -e ${BootstrapFile} ]
+then
+    grep --color -i -E '^|"Username"|"AgentId"' ${BootstrapFile}
+    echo
+else
+    print_warning "Missing agent configuration file (${BootstrapFile})"
+    echo "Was the configuration of the backup ran on the server?"
+    echo "To run setup after installation execute this:"
+    echo "driveclient --configure"
+fi
 
 
 # Listing processes and checking if backup agent is present
 print_header "Relevant processes"
-    ps aux | head -1
-    ps aux | grep '[d]riveclient\|[c]loudbackup-updater'
-    echo
-    if [ "$(pgrep driveclient)" ] 
-    then
-        # process running
-        echo -en "${ColourGreen}> driveclient process present "
-        echo -e  "(Backup Service is running) ${NoColour}"
-    else
-        print_warning "driveclient service is not running"
-        echo "If the agent is installed and configured correctly run this:"
-        echo "service driveclient start"
-    fi
+ps aux | head -1
+ps aux | grep '[d]riveclient\|[c]loudbackup-updater'
+echo
+if [ "$(pgrep driveclient)" ] 
+then
+    # process running
+    echo -en "${ColourGreen}> driveclient process present "
+    echo -e  "(Backup Service is running) ${NoColour}"
+else
+    print_warning "driveclient service is not running"
+    echo "If the agent is installed and configured correctly run this:"
+    echo "service driveclient start"
+fi
 
 
 # Location of the binary
 print_header "Location of binaries (whereis)"
-    whereis driveclient
-    whereis cloudbackup-updater
+whereis driveclient
+whereis cloudbackup-updater
 
 
 # Check version of driveclient
 print_header "Driveclient version"
-    if [ ! -z "$(command -v driveclient)" ]
-    then
-        driveclient --version
-    else
-        print_warning "driveclient program not present"
-        echo "Is the backup agent installed at all?"
-    fi
+if [ ! -z "$(command -v driveclient)" ]
+then
+    driveclient --version
+else
+    print_warning "driveclient program not present"
+    echo "Is the backup agent installed at all?"
+fi
 
 
 # Check if the cache directory exists and if so, check its contents.
@@ -353,21 +358,19 @@ else
     echo "Was the agent started for the first time?"
 fi
 
-
 # This was code for old versions of backup agent for bug which should not
 # be causing any issues nowadays. Still good to verify if lock is there.
 LockFile=/var/cache/driveclient/backup-running.lock
-    if [ -f ${LockFile} ];
-    then
-        print_warning "Lock file present (${LockFile})"
-        echo -n "If backups are stuck in queued state or showing as skipped "
-        echo    "(for last few attempts) follow these steps:"
-        echo    "1) Stop backup task in control panel"
-        echo    "2) Stop driveclient service"
-        echo    "3) Delete lock file"
-        echo    "4) Start driveclient service"
-    fi
-
+if [ -f ${LockFile} ];
+then
+    print_warning "Lock file present (${LockFile})"
+    echo -n "If backups are stuck in queued state or showing as skipped "
+    echo    "(for last few attempts) follow these steps:"
+    echo    "1) Stop backup task in control panel"
+    echo    "2) Stop driveclient service"
+    echo    "3) Delete lock file"
+    echo    "4) Start driveclient service"
+fi
 
 # Set variable for lock file and check if it exists
 LogFile=/var/log/driveclient.log
@@ -375,37 +378,37 @@ if [ -a "${LogFile}" ]
 then
     # Last 10 entries of log file
     print_header "Last 15 lines from the log file (${LogFile})"
-        tail -15 ${LogFile}
-        print_subheader "Number of entries with today's date"
-        grep -c $(date +%Y-%m-%d) ${LogFile}
-        print_subheader "Size of log file (bytes)"
-        stat --printf="%s" ${LogFile}
-        echo
+    tail -15 ${LogFile}
+    print_subheader "Number of entries with today's date"
+    grep -c $(date +%Y-%m-%d) ${LogFile}
+    print_subheader "Size of log file (bytes)"
+    stat --printf="%s" ${LogFile}
+    echo
 
     # Checking just for log entries containing "err"
     print_header "Last 10 Errors in log file (${LogFile})"
-        grep -i err ${LogFile} | tail -10
+    grep -i err ${LogFile} | tail -10
 else
     print_header "Checking log file presence (${LogFile})"
-        print_warning "Log file does not exist"
-        echo "Is the agent installed? Was it started for the first time?"
-        echo "Check if disk is not full or in read only state"
+    print_warning "Log file does not exist"
+    echo "Is the agent installed? Was it started for the first time?"
+    echo "Check if disk is not full or in read only state"
 fi
 
 
 # Show disk space and inodes
 print_header "Disk space left, inodes and mount-points"
-    print_subheader "Disk space (human readable)"
-    df -h
-    print_subheader "Inodes"
-    df -i
-    print_subheader "Mount points"
-    mount | column -t
+print_subheader "Disk space (human readable)"
+df -h
+print_subheader "Inodes"
+df -i
+print_subheader "Mount points"
+mount | column -t
 
 
 # Display memory nformation
 print_header "Memory usage information"
-    free
+free
 
 
 # Clear echo to give clean closing
