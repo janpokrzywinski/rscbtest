@@ -107,6 +107,10 @@ print_subheader () {
     echo -e "\n${ColourBlue}=> $1 :${NoColour}"
 }
 
+print_warning () {
+    echo -e "\n${ColourRed}!!! WARNING: $1 !!!${NoColour}"
+}
+
 # Basis system information and execution date
 print_header "System information"
     echo -e """
@@ -160,9 +164,10 @@ print_header "Network settings"
     RouteGW=$(route -n | awk '/10.208.0.0/ {print $2}')
     if [ -z "$RouteGW" ]
     then
-        echo -e "\n${ColourRed}!!! WARNING: Missing route for ServiceNet!${NoColour} \nIf this server was created before june 2013 please check this article:"
+        print_warning "Missing route for ServiceNet"
+        echo "If this server was created before june 2013 please check this article:"
         echo "https://support.rackspace.com/how-to/updating-servicenet-routes-on-cloud-servers-created-before-june-3-2013/"
-        echo -e "\nIt can also mean that ServiceNet network is not attached at all or is attached in non default order to the server."
+        echo "It can also mean that ServiceNet network is not attached at all or is attached in non default order to the server."
     fi
 
     AddrDirs=$(ls -d /sys/class/net/eth*)
@@ -198,10 +203,15 @@ BootstrapFile=/etc/driveclient/bootstrap.json
 print_header "Bootstrap contents (${BootstrapFile})"
     if [ -e ${BootstrapFile} ]
     then
-        cat ${BootstrapFile}
+        #cat ${BootstrapFile}
+        grep --color -i -E '^|Username|AgentId' ${BootstrapFile}
         echo
     else
-        echo -e "\n${ColourRed}!!! WARNING: Missing agent configuration file (${BootstrapFile})!${NoColour}\nWas the configuration of the backup ran on the server? To run setup after installation execute this:\ndriveclient --configure\n"
+        print_warning "Missing agent configuration file (${BootstrapFile})"
+        echo "Was the configuration of the backup ran on the server?"
+        echo "To run setup after installation execute this:"
+        echo "driveclient --configure"
+        echo
     fi
 
 # Listing processes and checking if backup agent is present
@@ -214,13 +224,19 @@ print_header "Relevant processes"
         # process running
         echo -e "${ColourGreen}> driveclient process present (Backup Service is running) ${NoColour}"
     else
-        echo -e "${ColourRed}!!! WARNING: driveclient service is not running! ${NoColour}\nIf the agent is installed and configured correctly run this:\nservice driveclient start\n"
+        print_warning "driveclient service is not running"
+        echo "If the agent is installed and configured correctly run this:"
+        echo "service driveclient start"
+        echo
     fi
     if [ "$(pidof nova-agent)" ]
     then
         NovaRunning=true
     else
-        echo -e "${ColourRed}!!! WARNING: nova-agent service is not running! ${NoColour}\nPlease check the /var/nova-agent.log for more details and attempt to start it with:\nservice nova-agent start\n"
+        print_warning "nova-agent service is not running"
+        echo "Please check the /var/nova-agent.log for more details and attempt to start it with:"
+        echo "service nova-agent start"
+        echo
     fi
 
 # Location of the binary
@@ -239,11 +255,16 @@ print_header "Cache directory contents (/var/cache/driveclient/)"
 LockFile=/var/cache/driveclient/backup-running.lock
     if [ -f ${LockFile} ];
     then
-        echo -e "\n${ColourRed}!!! WARNING: Lock File present (${LockFile})\e${NoColour}\nIf backups are stuck in queued state or showing as skipped for last few attempts follow these steps:\n1) Stop backup task in control panel\n2) Stop driveclient service\n3) Delete lock file\n4) Start driveclient service"
+        print_warning "Lock file present (${LockFile})"
+        echo "If backups are stuck in queued state or showing as skipped for last few attempts follow these steps:"
+        echo "1) Stop backup task in control panel"
+        echo "2) Stop driveclient service"
+        echo "3) Delete lock file"
+        echo "4) Start driveclient service"
     fi
 
 # Set variable for lock file and check if it exists
-LogFile=/var/log/driveclient.log1
+LogFile=/var/log/driveclient.log
 if [ -a "${LogFile}" ]
 then
     # Last 10 entries of log file
@@ -260,7 +281,7 @@ then
         grep -i err ${LogFile} | tail -10
 else
     print_header "Checking log file presence (${LogFile})"
-        echo -e "\n${ColourRed}!!! WARNING: Log File does not exist${NoColour}"
+        print_warning "Log file does not exist"
         echo "Is the agent installed? Was it started for the first time?"
         echo "Check if disk is not full or in read only state"
 fi
