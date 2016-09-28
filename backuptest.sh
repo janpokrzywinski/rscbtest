@@ -45,7 +45,7 @@ fi
 
 # Functions for printing of headers and warnings
 print_header () {
-    echo -e "\n${ColourMag}###>========> $1:${NoColour}"
+    echo -e "\n${ColourMag}####>>>>========> $1:${NoColour}"
 }
 
 print_subheader () {
@@ -333,18 +333,14 @@ else
     print_warning "driveclient service is not running"
     echo "If the agent is installed and configured correctly run this:"
     echo "service driveclient start"
-    echo
 fi
 if [ "$(pgrep -f cloudbackup-updater)" ]
 then
-    echo -en "${ColourGreen}> cloudbackup-updater process present${NoColour}"
-    echo
+    echo -e "${ColourGreen}> cloudbackup-updater process present${NoColour}"
 else
     print_warning "cloudbackup-updater process is not running"
     echo "Was it started for the first time after installation?"
-    echo
 fi
-
 
 
 # Location of the binary
