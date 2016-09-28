@@ -1,11 +1,12 @@
 #!/bin/bash
+# Filename: backuptest.sh
 # Script to automate troubleshooting procedure for linux of
 # Rackspace Cloud Backup agent and Rackspace Cloud Backups
 # Jan Pokrzywinski (Rackspace UK) 2015-2016
 # Script lives here:
 # https://github.com/janpokrzywinski/rscbtest
 # https://community.rackspace.com/products/f/25/t/4917
-Version=1.8.2
+Version=1.9
 vDate=2016-09-27
 
 # Check if script is executed as root, if not break
@@ -127,7 +128,8 @@ do
             echo -en " "
         done
     echo -en ": ${ColourYellow}"
-    getent ahosts ${Endpoint[ResolveNumber]} | tac | awk '/RAW/ {print $1}' | sed ':a;N;$!ba;s/\n/     /g'
+    getent ahosts ${Endpoint[ResolveNumber]} | tac \
+    | awk '/RAW/ {print $1}' | sed ':a;N;$!ba;s/\n/     /g'
     echo -en "${NoColour}"
     LineNum=0
 done    
@@ -205,7 +207,7 @@ print_header "Bootstrap contents (${BootstrapFile})"
 # Listing processes and checking if backup agent is present
 print_header "Relevant processes"
     ps aux | head -1
-    ps aux | grep --color '[d]riveclient\|[c]loudbackup-updater\|[n]ova-agent\|[x]e-daemon'
+    ps aux | grep '[d]riveclient\|[c]loudbackup-updater\|[n]ova-agent\|[x]e-daemon'
     echo
     if [ "$(pidof driveclient)" ] 
     then
@@ -240,16 +242,28 @@ LockFile=/var/cache/driveclient/backup-running.lock
         echo -e "\n${ColourRed}!!! WARNING: Lock File present (${LockFile})\e${NoColour}\nIf backups are stuck in queued state or showing as skipped for last few attempts follow these steps:\n1) Stop backup task in control panel\n2) Stop driveclient service\n3) Delete lock file\n4) Start driveclient service"
     fi
 
-LogFile=/var/log/driveclient.log
-# Last 10 entries of log file
-print_header "Last 15 entries from the log file (${LogFile})"
-    tail -15 ${LogFile}
-    print_subheader "Number of entries with today's date"
-    grep -c $(date +%Y-%m-%d) ${LogFile}
+# Set variable for lock file and check if it exists
+LogFile=/var/log/driveclient.log1
+if [ -a "${LogFile}" ]
+then
+    # Last 10 entries of log file
+    print_header "Last 15 lines from the log file (${LogFile})"
+        tail -15 ${LogFile}
+        print_subheader "Number of entries with today's date"
+        grep -c $(date +%Y-%m-%d) ${LogFile}
+        print_subheader "Size of log file (bytes)"
+        stat --printf="%s" ${LogFile}
+        echo
 
-# Checking just for log entries containing "err"
-print_header "Last 10 Errors in log file (${LogFile})"
-    grep -i err ${LogFile} | tail -10
+    # Checking just for log entries containing "err"
+    print_header "Last 10 Errors in log file (${LogFile})"
+        grep -i err ${LogFile} | tail -10
+else
+    print_header "Checking log file presence (${LogFile})"
+        echo -e "\n${ColourRed}!!! WARNING: Log File does not exist${NoColour}"
+        echo "Is the agent installed? Was it started for the first time?"
+        echo "Check if disk is not full or in read only state"
+fi
 
 # Show disk space and inodes
 print_header "Disk space left, inodes and mount-points"
@@ -259,7 +273,7 @@ print_header "Disk space left, inodes and mount-points"
     print_subheader "Mount points"
     mount | column -t
 
-# Display memory information
+# Display memory nformation
 print_header "Memory usage information"
     free
 
