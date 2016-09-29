@@ -238,6 +238,10 @@ do
     fi
     echo -en "Ping to${ColourBlue} ${Endpoint[PingNumber]} ${NoColour}"
     LineNum=$(expr 36 - ${#Endpoint[PingNumber]})
+    for i in $(seq 1 ${LineNum})
+        do
+            echo -en " "
+        done
     echo -e ": ${PingStatus}"
 done
 if [[ "${CurrentRegion}" = "UNKNOWN" ]]
