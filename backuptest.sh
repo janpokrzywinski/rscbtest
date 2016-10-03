@@ -9,8 +9,8 @@
 # https://github.com/janpokrzywinski/rscbtest
 # https://community.rackspace.com/products/f/25/t/4917
 
-Version=1.9.2
-vDate=2016-09-28
+Version=1.9.3
+vDate=2016-10-03
 
 
 # Check if script is executed as root, if not break
@@ -113,7 +113,9 @@ else
     XSToolsPresent=false
 fi
 
-if [ "${CurrentRegion}" == x* ] && [ "${InstanceName}" == x* ]
+# verify if region pull was successfull by checking if the contents of
+# variable contain error message from xenstore-read
+if [[ "${CurrentRegion}" == x* ]] && [[ "${InstanceName}" == x* ]]
 then
     echo "Couldn't read from XenStore"
     CurrentRegion="UNKNOWN"
