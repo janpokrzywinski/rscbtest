@@ -382,10 +382,13 @@ print_header "Cache directory contents (${CacheDir})"
 if [ -d "${CacheDir}" ]
 then
     ls -hla ${CacheDir}
+    print_subheader "Cache directory structure size"
+    du -h -d 2 ${CacheDir}
 else
-    print_warning "Cache Directory not present"
+    print_warning "Cache directory not present"
     echo "Is the agent installed?"
     echo "Was the agent started for the first time?"
+    echo "It is also possible that it is set to non-standard path"
 fi
 
 # This was code for old versions of backup agent for bug which should not
