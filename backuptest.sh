@@ -9,7 +9,7 @@
 # https://github.com/janpokrzywinski/rscbtest
 # https://community.rackspace.com/products/f/25/t/4917
 
-Version=1.9.4
+Version=1.9.5
 vDate=2016-10-06
 
 
@@ -154,7 +154,8 @@ then
     DetectOSMethod=${DVerFile}
 elif [[ -e ${UIssFile} ]]
 then
-    DetectedOS="${ColourYel} $(awk 'NF' ${UIssFile} | head -n1)"
+    IssueFirstLine=$(awk 'NF' ${UIssFile} | head -n1)
+    DetectedOS="${ColourYel} ${IssueFirstLine}"
     DetectOSMethod=${UIssFile}
 fi
 
@@ -255,7 +256,7 @@ echo -en "Status of xe-daemon                            :"
 echo -e  "${XedaemonColour} ${XedaemonStatus} ${NoColour}"
 echo -en "Detected version of OS                         :"
 echo -e  "${DetectedOS} ${NoColour}"
-echo -en "OS detection method used                       :"
+echo -en "OS type detection method used                  :"
 echo -e  "${ColourYellow} ${DetectOSMethod} ${NoColour}"
 echo -en "BASH version                                   :"
 echo -e  "${BashVColour} ${BASH_VERSION} ${NoColour}"
