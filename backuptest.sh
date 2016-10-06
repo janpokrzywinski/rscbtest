@@ -68,6 +68,10 @@ echo "Running checks ..."
 
 ###############################################################################
 # Checking if version of bash is higher than 3.x
+# This is in place as on very old servers which came with v3 it produces 
+# extra script errors which may be initially quite confusing and it won't
+# prevent from showing correct error message for lack of servicenet endpoints
+# to ping. Example: Centos 5
 BashVColour=${ColourYellow}
 if [[ ${BASH_VERSION} == 3* ]]
 then
@@ -75,7 +79,6 @@ then
     print_warning "Very old version of bash detected"
     echo "The version is below 4.x - this can cause false positives in output"
     echo "It can also throw additional error for unknown directives"
-    echo
 fi
 
 
@@ -154,7 +157,7 @@ then
     DetectOSMethod=${DVerFile}
 elif [[ -e ${UIssFile} ]]
 then
-    IssueFirstLine=$(awk 'NF' ${UIssFile} | head -n1)
+    IssueFirstLine="$(awk 'NF' ${UIssFile} | head -n1)"
     DetectedOS="${ColourYel} ${IssueFirstLine}"
     DetectOSMethod=${UIssFile}
 fi
@@ -294,7 +297,7 @@ fi
 print_header "Test ping response from endpoints"
 for PingNumber in $(seq 0 $EndpointNumber)
 do
-    if ping -q -W6 -c1 ${Endpoint[PingNumber]} &> /dev/null
+    if ping -q -W10 -c1 ${Endpoint[PingNumber]} &> /dev/null
     then
         PingStatus="${ColourGreen}Success${NoColour}"
     else
@@ -351,7 +354,7 @@ done
 print_subheader "ARP table"
 arp
 print_subheader "DNS settings (contents of resolv.conf)"
-cat /etc/resolv.conf
+grep -v '^#' /etc/resolv.conf
 
 
 ###############################################################################
