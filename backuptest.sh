@@ -23,15 +23,6 @@ fi
 
 
 ###############################################################################
-# Checking if version of bash is more than 4
-OldBashV=""
-if [[ ${BASH_VERSION} == 3* ]]
-then
-    OldBashV="Bash version is very old, it can cause some false positives"
-fi
-
-
-###############################################################################
 # Check if output is directed to file or to terminali and set variables 
 # for colors (Used to strip colors for text output).
 # This is in place in case if someone downloads this scripts and redirects
@@ -53,6 +44,18 @@ else
     NoColour=""
 fi
 
+
+###############################################################################
+# Checking if version of bash is higher than 3.x
+BashVstatus=""
+BashVColour=${ColourYellow}
+BashVMsg=""
+if [[ ${BASH_VERSION} == 3* ]]
+then
+    BashVColour=${ColourRed}
+    BashVMsg="Old version of bash, this can cause false positives in output"
+fi
+BashVstatus="${BashVColour} ${BASH_VERSION} ${BashVMsg} ${NoColour}"
 
 ###############################################################################
 # Functions for printing of headers and warnings
@@ -150,7 +153,7 @@ then
     DetectOSMethod=${DVerFile}
 elif [[ -e ${UIssFile} ]]
 then
-    DetectedOS="${ColourYel} $(awk 'NS' ${UIssFile})"
+    DetectedOS="${ColourYel} $(awk 'NF' ${UIssFile}) | head -n1"
     DetectOSMethod=${UIssFile}
 fi
 
@@ -254,7 +257,8 @@ echo -e  "${DetectedOS} ${NoColour}"
 echo -en "OS detection method used                       :"
 echo -e  "${ColourYellow} ${DetectOSMethod} ${NoColour}"
 echo -en "BASH version                                   :"
-echo -e  "${ColourYellow} ${BASH_VERSION} ${ColourRed}${OldBashV} ${NoColour}"
+echo -e  "${BashVstatus}"
+
 
 
 ###############################################################################
