@@ -46,18 +46,6 @@ fi
 
 
 ###############################################################################
-# Checking if version of bash is higher than 3.x
-BashVstatus=""
-BashVColour=${ColourYellow}
-BashVMsg=""
-if [[ ${BASH_VERSION} == 3* ]]
-then
-    BashVColour=${ColourRed}
-    BashVMsg="Old version of bash, this can cause false positives in output"
-fi
-BashVstatus="${BashVColour} ${BASH_VERSION} ${BashVMsg} ${NoColour}"
-
-###############################################################################
 # Functions for printing of headers and warnings
 print_header () {
     echo -e "\n${ColourMag}####>>>>========> $1:${NoColour}"
@@ -76,6 +64,19 @@ print_warning () {
 # Notification for setup of checks
 echo "Rackspace Cloud Backup troubleshooting script"
 echo "Running checks ..."
+
+
+###############################################################################
+# Checking if version of bash is higher than 3.x
+BashVColour=${ColourYellow}
+if [[ ${BASH_VERSION} == 3* ]]
+then
+    BashVColour=${ColourRed}
+    print_warning "Very old version of bash detected"
+    echo "The version is below 4.x - this can cause false positives in output"
+    echo "It can also throw additional error for unknown directives"
+    echo
+fi
 
 
 ###############################################################################
@@ -153,7 +154,7 @@ then
     DetectOSMethod=${DVerFile}
 elif [[ -e ${UIssFile} ]]
 then
-    DetectedOS="${ColourYel} $(awk 'NF' ${UIssFile}) | head -n1"
+    DetectedOS="${ColourYel} $(awk 'NF' ${UIssFile} | head -n1)"
     DetectOSMethod=${UIssFile}
 fi
 
@@ -257,7 +258,7 @@ echo -e  "${DetectedOS} ${NoColour}"
 echo -en "OS detection method used                       :"
 echo -e  "${ColourYellow} ${DetectOSMethod} ${NoColour}"
 echo -en "BASH version                                   :"
-echo -e  "${BashVstatus}"
+echo -e  "${BashVColour} ${BASH_VERSION} ${NoColour}"
 
 
 
