@@ -394,13 +394,13 @@ fi
 
 ###############################################################################
 # Listing processes and checking if backup agent is present
+# output will be only listed if processes are running.
 print_header "Relevant processes"
-ps aux | head -1
-ps aux | grep '[d]riveclient\|[c]loudbackup-updater'
 echo
 if [ "$(pgrep driveclient)" ] 
 then
-    # process running
+    ps aux | head -1
+    ps aux | grep '[d]riveclient'
     echo -en "${ColourGreen}> driveclient process present "
     echo -e  "(Backup Service is running) ${NoColour}"
 else
@@ -410,6 +410,7 @@ else
 fi
 if [ "$(pgrep -f cloudbackup-updater)" ]
 then
+    ps aux | grep '[c]loudbackup-updater'
     echo -e "${ColourGreen}> cloudbackup-updater process present${NoColour}"
 else
     print_warning "cloudbackup-updater process is not running"
