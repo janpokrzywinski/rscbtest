@@ -142,6 +142,8 @@ DetectedOS="${ColourRed} Undetected"
 DetectOSMethod="${ColourRed} Undetected"
 # Universal Release file for all modern distros
 URelFile=/etc/os-release
+# Ubuntu lsb file
+LSBFile=/etc/lsb-release
 # This is in place for old debian distros
 DVerFile=/etc/debian_version
 # Last one as a fallback
@@ -151,6 +153,11 @@ then
     source ${URelFile}
     DetectedOS="${ColourGreen} ${NAME} ${VERSION}"
     DetectOSMethod=${URelFile}
+elif [[ $(grep -i "Ubuntu" ${LSBFile}) ]]
+then
+    source ${LSBFile}
+    DetectedOS="${DISTRIB_DESCRIPTION}"
+    DetectOSMethod=${LSBFile}
 elif [[ -e ${DVerFile} ]]
 then
     DetectedOS="${ColourGreen} Debian $(cat ${DVerFile})"
@@ -396,7 +403,6 @@ fi
 # Listing processes and checking if backup agent is present
 # output will be only listed if processes are running.
 print_header "Relevant processes"
-echo
 if [ "$(pgrep driveclient)" ] 
 then
     ps aux | head -1
