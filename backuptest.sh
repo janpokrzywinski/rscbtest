@@ -156,7 +156,7 @@ then
 elif [[ $(grep -i "Ubuntu" ${LSBFile}) ]]
 then
     source ${LSBFile}
-    DetectedOS="${DISTRIB_DESCRIPTION}"
+    DetectedOS="${ColourGreen} ${DISTRIB_DESCRIPTION}"
     DetectOSMethod=${LSBFile}
 elif [[ -e ${DVerFile} ]]
 then
