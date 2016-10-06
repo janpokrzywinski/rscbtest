@@ -9,10 +9,11 @@
 # https://github.com/janpokrzywinski/rscbtest
 # https://community.rackspace.com/products/f/25/t/4917
 
-Version=1.9.3
-vDate=2016-10-03
+Version=1.9.4
+vDate=2016-10-06
 
 
+###############################################################################
 # Check if script is executed as root, if not break
 if [ $(whoami) != "root" ]
 then
@@ -21,6 +22,7 @@ then
 fi
 
 
+###############################################################################
 # Check if output is directed to file or to terminali and set variables 
 # for colors (Used to strip colors for text output).
 # This is in place in case if someone downloads this scripts and redirects
@@ -43,6 +45,7 @@ else
 fi
 
 
+###############################################################################
 # Functions for printing of headers and warnings
 print_header () {
     echo -e "\n${ColourMag}####>>>>========> $1:${NoColour}"
@@ -57,11 +60,13 @@ print_warning () {
 }
 
 
+###############################################################################
 # Notification for setup of checks
 echo "Rackspace Cloud Backup troubleshooting script"
 echo "Running checks ..."
 
 
+###############################################################################
 # Check for crucial cloud server services
 NovaLogFile=/var/log/nova-agent.log
 if [ "$(pgrep nova-agent)" ]
@@ -95,6 +100,7 @@ else
 fi
 
 
+###############################################################################
 # Setup variable for a specific region in which server is located
 if [ $(command -v xenstore-read) ]
 then
@@ -113,6 +119,30 @@ else
     XSToolsPresent=false
 fi
 
+
+###############################################################################
+# Try to determine OS version.
+DetectedOS="${ColourRed} Undetected"
+URelFile=/etc/os-release
+DVerFile=/etc/debian_version
+UIssFile=/etc/issue
+if [[ -e ${URelFile} ]]
+then
+    source ${URelFile}
+    DetectedOS="${ColourGreen} ${NAME} ${VERSION}"
+    echo "first detect"
+elif [[ -e ${DVerFile} ]]
+then
+    DetectedOS="${ColourGreen} Debian $(cat ${DVerFile})"
+    echo "second detect"
+elif [[ -e ${UIssFile} ]]
+then
+    echo "third detect"
+    DetectedOS="${ColourYel} $(grep -v -e '^$' ${UIssFile})"
+fi
+
+
+###############################################################################
 # verify if region pull was successfull by checking if the contents of
 # variable contain error message from xenstore-read
 if [[ "${CurrentRegion}" == x* ]] && [[ "${InstanceName}" == x* ]]
@@ -122,6 +152,8 @@ then
     InstanceName="UNKNOWN"
 fi
 
+
+###############################################################################
 # Set numbers of endpoints to resolve/ping based on CurrentRegion
 # This is in place as there are different endpoints for specific regions
 # it is to later resolve and ping the endpoints, they will be picked from
@@ -150,6 +182,7 @@ case ${CurrentRegion} in
 esac
 
 
+###############################################################################
 # Create table to replace veriable with correct name from API endpoints
 declare -A Region
     Region[lon]="lon3"
@@ -161,6 +194,7 @@ declare -A Region
     Region[UNKNOWN]="UNKNOWN"
 
 
+###############################################################################
 # Setting up endpoint hostnames for ping
 if [[ ${CurrentRegion} == "lon" ]]
 then
@@ -183,6 +217,7 @@ Endpoint=(
 fi
 
 
+###############################################################################
 # Basis system information and execution date
 print_header "System information and crucial services check"
 echo -en "Running kernel                               :"
@@ -201,8 +236,11 @@ echo -en "Status of nova-agent on the server           :"
 echo -e  " ${NovaStatus}"
 echo -en "Status of xe-daemon                          :"
 echo -e  "${XedaemonColour} ${XedaemonStatus} ${NoColour}"
+echo -en "Detected version of OS                       :"
+echo -e  "${DetectedOS} ${NoColour}"
 
 
+###############################################################################
 # Resolve all access points for all regions
 print_header "Test DNS resolution"
 echo -en "${ColourBlue}"
@@ -228,6 +266,7 @@ then
 fi
 
 
+###############################################################################
 # Run single ping request to each of the access points
 print_header "Test ping response from endpoints"
 for PingNumber in $(seq 0 $EndpointNumber)
@@ -292,6 +331,7 @@ print_subheader "DNS settings (contents of resolv.conf)"
 cat /etc/resolv.conf
 
 
+###############################################################################
 # Check Backup API health status:
 H1="https://rse.drivesrvr.com/health"
 H2="https://${CurrentRegion}.backup.api.rackspacecloud.com/v1.0/help/apihealth"
@@ -310,6 +350,7 @@ echo
 # echo
 
 
+###############################################################################
 # Show contents from bootstrap.json (config file)
 BootstrapFile=/etc/driveclient/bootstrap.json
 print_header "Bootstrap contents (${BootstrapFile})"
@@ -325,6 +366,7 @@ else
 fi
 
 
+###############################################################################
 # Listing processes and checking if backup agent is present
 print_header "Relevant processes"
 ps aux | head -1
@@ -349,6 +391,7 @@ else
 fi
 
 
+###############################################################################
 # Location of the binary
 print_header "Location of binaries"
 driveclientLocation=$(command -v driveclient)
@@ -361,10 +404,11 @@ if [[ -z "${updaterLocation}" ]]
 then
     updaterLocation="${ColourRed}File does not exit${NoColour}"
 fi
-echo -e "${ColourBlue}driveclient         ${NoColour}: ${driveclientLocation}"
-echo -e "${ColourBlue}cloudbackup-updater ${NoColour}: ${updaterLocation}"
+echo -e "${ColourBlue}driveclient          ${NoColour}: ${driveclientLocation}"
+echo -e "${ColourBlue}cloudbackup-updater  ${NoColour}: ${updaterLocation}"
 
 
+###############################################################################
 # Check version of driveclient
 print_header "Driveclient version"
 if [ ! -z "$(command -v driveclient)" ]
@@ -376,6 +420,7 @@ else
 fi
 
 
+###############################################################################
 # Check if the cache directory exists and if so, check its contents.
 CacheDir=/var/cache/driveclient
 print_header "Cache directory contents (${CacheDir})"
@@ -383,7 +428,7 @@ if [ -d "${CacheDir}" ]
 then
     ls -hla ${CacheDir}
     print_subheader "Cache directory structure size"
-    du -h -d 2 ${CacheDir}
+    du -h --max-depth 2 ${CacheDir}
 else
     print_warning "Cache directory not present"
     echo "Is the agent installed?"
@@ -391,6 +436,8 @@ else
     echo "It is also possible that it is set to non-standard path"
 fi
 
+
+###############################################################################
 # This was code for old versions of backup agent for bug which should not
 # be causing any issues nowadays. Still good to verify if lock is there.
 LockFile=/var/cache/driveclient/backup-running.lock
@@ -405,6 +452,8 @@ then
     echo    "4) Start driveclient service"
 fi
 
+
+###############################################################################
 # Set variable for lock file and check if it exists
 LogFile=/var/log/driveclient.log
 if [ -a "${LogFile}" ]
@@ -429,6 +478,7 @@ else
 fi
 
 
+###############################################################################
 # Show disk space and inodes
 print_header "Disk space left, inodes and mount-points"
 print_subheader "Disk space (human readable)"
@@ -439,10 +489,12 @@ print_subheader "Mount points"
 mount | column -t
 
 
+###############################################################################
 # Display memory nformation
 print_header "Memory usage information"
 free
 
 
+###############################################################################
 # Clear echo to give clean closing
 echo
