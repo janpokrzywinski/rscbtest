@@ -141,7 +141,7 @@ then
     DetectOSMethod=${DVerFile}
 elif [[ -e ${UIssFile} ]]
 then
-    DetectedOS="${ColourYel} $(grep -v -e '^$' ${UIssFile})"
+    DetectedOS="${ColourYel} $(awk 'NS' ${UIssFile})"
     DetectOSMethod=${UIssFile}
 fi
 
