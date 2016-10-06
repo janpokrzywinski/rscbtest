@@ -23,6 +23,15 @@ fi
 
 
 ###############################################################################
+# Checking if version of bash is more than 4
+OldBashV=""
+if [[ ${BASH_VERSION} == 3* ]]
+then
+    OldBashV="Bash version is very old, it can cause some false positives"
+fi
+
+
+###############################################################################
 # Check if output is directed to file or to terminali and set variables 
 # for colors (Used to strip colors for text output).
 # This is in place in case if someone downloads this scripts and redirects
@@ -224,44 +233,46 @@ fi
 ###############################################################################
 # Basis system information and execution date
 print_header "System information and crucial services check"
-echo -en "Running kernel                               :"
+echo -en "Running kernel                                 :"
 echo -e  "${ColourYellow} $(uname -a) ${NoColour}"
-echo -en "Region pulled from XenStore                  :"
+echo -en "Region pulled from XenStore                    :"
 echo -e  "${CurrentRegionColour} ${CurrentRegion} ${NoColour}"
-echo -en "Instance UUID from XenStore                  :"
+echo -en "Instance UUID from XenStore                    :"
 echo -e  "${InstanceNameColour} ${InstanceName} ${NoColour}"
-echo -en "Script version                               :"
+echo -en "Script version                                 :"
 echo -e  "${ColourYellow} ${Version} (${vDate})${NoColour}"
-echo -en "Runlevel                                     :"
+echo -en "Runlevel                                       :"
 echo -e  "${ColourYellow} $(runlevel) ${NoColour}"
-echo -en "System date and time                         :"
+echo -en "System date and time                           :"
 echo -e  "${ColourYellow} $(date) ${NoColour}"
-echo -en "Status of nova-agent on the server           :"
+echo -en "Status of nova-agent on the server             :"
 echo -e  " ${NovaStatus}"
-echo -en "Status of xe-daemon                          :"
+echo -en "Status of xe-daemon                            :"
 echo -e  "${XedaemonColour} ${XedaemonStatus} ${NoColour}"
-echo -en "Detected version of OS                       :"
+echo -en "Detected version of OS                         :"
 echo -e  "${DetectedOS} ${NoColour}"
-echo -en "OS detection method used                     :"
+echo -en "OS detection method used                       :"
 echo -e  "${ColourYellow} ${DetectOSMethod} ${NoColour}"
+echo -en "BASH version                                   :"
+echo -e  "${ColourYellow} ${BASH_VERSION} ${ColourRed}${OldBashV} ${NoColour}"
 
 
 ###############################################################################
 # Resolve all access points for all regions
 print_header "Test DNS resolution"
 echo -en "${ColourBlue}"
-echo -e "Domain Name                                  : IPv4              IPv6"
+echo -e "Domain Name                                    : IPv4"
 echo -en "${NoColour}"
 for ResolveNumber in $(seq 0 ${EndpointNumber})
 do
     echo -en "${Endpoint[ResolveNumber]}"
-    LineNum=$(expr 45 - ${#Endpoint[ResolveNumber]})
+    LineNum=$(expr 47 - ${#Endpoint[ResolveNumber]})
     for i in $(seq 1 ${LineNum})
         do
             echo -en " "
         done
     Result=$(getent ahosts ${Endpoint[ResolveNumber]} | tac \
-             | awk '/RAW/ {print $1}' | sed ':a;N;$!ba;s/\n/     /g')
+             | awk '/RAW/ {print $1}' | sed ':a;N;$!ba;s/\n/   IPv6: /g')
     echo -e ":${ColourYellow} ${Result} ${NoColour}"
     LineNum=0
 done    
@@ -284,7 +295,7 @@ do
         PingStatus="${ColourRed}Error${NoColour}"
     fi
     echo -en "Ping to${ColourBlue} ${Endpoint[PingNumber]} ${NoColour}"
-    LineNum=$(expr 36 - ${#Endpoint[PingNumber]})
+    LineNum=$(expr 38 - ${#Endpoint[PingNumber]})
     for i in $(seq 1 ${LineNum})
         do
             echo -en " "
