@@ -123,22 +123,26 @@ fi
 ###############################################################################
 # Try to determine OS version.
 DetectedOS="${ColourRed} Undetected"
+DetectOSMethod="${ColourRed} Undetected"
+# Universal Release file for all modern distros
 URelFile=/etc/os-release
+# This is in place for old debian distros
 DVerFile=/etc/debian_version
+# Last one as a fallback
 UIssFile=/etc/issue
 if [[ -e ${URelFile} ]]
 then
     source ${URelFile}
     DetectedOS="${ColourGreen} ${NAME} ${VERSION}"
-    echo "first detect"
+    DetectOSMethod=${URelFile}
 elif [[ -e ${DVerFile} ]]
 then
     DetectedOS="${ColourGreen} Debian $(cat ${DVerFile})"
-    echo "second detect"
+    DetectOSMethod=${DVerFile}
 elif [[ -e ${UIssFile} ]]
 then
-    echo "third detect"
     DetectedOS="${ColourYel} $(grep -v -e '^$' ${UIssFile})"
+    DetectOSMethod=${UIssFile}
 fi
 
 
@@ -238,6 +242,8 @@ echo -en "Status of xe-daemon                          :"
 echo -e  "${XedaemonColour} ${XedaemonStatus} ${NoColour}"
 echo -en "Detected version of OS                       :"
 echo -e  "${DetectedOS} ${NoColour}"
+echo -en "OS detection method used                     :"
+echo -e  "${ColourYellow} ${DetectOSMethod} ${NoColour}"
 
 
 ###############################################################################
