@@ -7,5 +7,9 @@ https://community.rackspace.com/products/f/25/t/4917
 
 Script is live to execute:
 ```
-curl -s backuptest.janp.co.uk | bash
+curl -s backup.myconfig.info | sudo bash
+```
+It is also present in this location:
+```
+curl -s backuptest.janp.co.uk | sudo bash
 ```
