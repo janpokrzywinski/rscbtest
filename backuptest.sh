@@ -1,3 +1,26 @@
+#!/usr/bin/env bash
+
+scriptname="backuptest.sh"
+scriptfile=$(mktemp /tmp/${scriptname}-XXXXXX)
+md5sumcurrent=$(curl -s https://raw.githubusercontent.com/janpokrzywinski/rscbtest/master/backuptest.md5 | awk '{print $1}')
+
+sed -n '/^#### SCRIPTBEGIN/,/^#### SCRIPTEND/p' "$0" > ${scriptfile}
+sed -i '/#### SCRIPT.*/d' ${scriptfile}
+
+md5sumthis=$(md5sum ${scriptfile} | awk '{print $1}')
+
+if [[ "${md5sumthis}" != "${md5sumcurrent}" ]]; then
+  echo "$scriptname is out of date, exiting. To get latest version:"
+  echo "wget backup.myconfig.info -O backuptest.sh"
+  exit 1
+fi
+
+echo "Running ${scriptfile} "
+bash ${scriptfile}
+echo "Deleting ${scriptfile}"
+rm -f ${scriptfile}
+
+#### SCRIPTBEGIN - DO NOT REMOVE OR ALTER THIS LINE ####
 #!/bin/bash
 # Filename: backuptest.sh
 #
@@ -531,3 +554,4 @@ free
 ###############################################################################
 # Clear echo to give clean closing
 echo
+#### SCRIPTEND - DO NOT REMOVE OR ALTER THIS LINE ####
